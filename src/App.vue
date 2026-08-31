@@ -15,8 +15,6 @@ import {
   NLayoutHeader,
   NLayoutSider,
   NModal,
-  NRadioButton,
-  NRadioGroup,
   NSelect,
   NSpace,
   NStatistic,
@@ -292,13 +290,13 @@ const playerColumns = [
             <section v-else-if="activeKey === 'agents'">
               <div class="section-head"><div><h1>代理管理</h1><p class="muted">以代理為主體查看層級、代理線、幣別與可分配反傭點數；代理可立即開設下級。</p></div><NButton type="primary" @click="showCreateAgent = true">＋ 開設下級代理</NButton></div>
               <div class="agent-focus-grid"><NCard class="focus-card"><div class="focus-icon">A</div><div><span>目前登入代理</span><strong>agent_demo</strong><small>總代理 · TWD · 可管理 4 層代理線</small></div></NCard><NCard class="focus-card"><div class="focus-icon blue">%</div><div><span>反傭點數說明</span><strong>可分配反傭點數</strong><small>代表此代理可分配給下級的比例上限；不可超過上級可分配額度。</small></div></NCard><NCard class="focus-card"><div class="focus-icon green">↳</div><div><span>代理線狀態</span><strong>3 條 · 幣別一致</strong><small>同一條代理線內代理與玩家必須使用相同幣別。</small></div></NCard></div>
-              <NCard class="filter-card"><div class="filter-row"><NRadioGroup v-model:value="scope" size="small"><NRadioButton value="direct">只看直屬</NRadioButton><NRadioButton value="all">查看全部下級</NRadioButton></NRadioGroup><NInput v-model:value="search" clearable placeholder="搜尋帳號或樹狀路徑" class="search-input"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput></div></NCard>
+              <NCard class="filter-card"><div class="filter-row"><div class="scope-toggle"><button :class="{ active: scope === 'direct' }" @click="scope = 'direct'">只看直屬</button><button :class="{ active: scope === 'all' }" @click="scope = 'all'">查看全部下級</button></div><NInput v-model:value="search" clearable placeholder="搜尋帳號或樹狀路徑" class="search-input"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput></div></NCard>
               <NCard :bordered="false" class="table-card"><NDataTable :columns="agentColumns" :data="filteredAgents" :pagination="{ pageSize: 8 }" :row-props="agentRowProps" /><NDivider /><div class="table-hint">點擊任一代理列可查看完整代理資訊與調整反傭點數</div><div v-for="row in filteredAgents" :key="row.id" class="action-line"><NThing :title="row.account" :description="`${row.level} · ${row.path}`"><template #avatar><div class="row-avatar agent">A</div></template></NThing><NTag :type="row.status === '啟用' ? 'success' : 'default'" round>{{ row.status }}</NTag><NSpace><NButton quaternary size="small" @click="openAgent(row)"><NIcon><EyeOutline /></NIcon> 查看代理</NButton><NButton quaternary size="small" @click="deactivateAgent(row)">{{ row.status === '啟用' ? '停用' : '啟用' }}</NButton></NSpace></div></NCard>
             </section>
 
             <section v-else-if="activeKey === 'players'">
               <div class="section-head"><div><h1>玩家管理</h1><p class="muted">玩家資料僅限查看，手機與信箱依隱私規則遮罩。</p></div><NTag type="info" round>唯讀資料</NTag></div>
-              <NCard class="filter-card"><div class="filter-row"><NRadioGroup v-model:value="scope" size="small"><NRadioButton value="direct">直屬玩家</NRadioButton><NRadioButton value="all">全部下級玩家</NRadioButton></NRadioGroup><NInput v-model:value="search" clearable placeholder="搜尋玩家帳號或路徑" class="search-input"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput></div></NCard>
+              <NCard class="filter-card"><div class="filter-row"><div class="scope-toggle"><button :class="{ active: scope === 'direct' }" @click="scope = 'direct'">直屬玩家</button><button :class="{ active: scope === 'all' }" @click="scope = 'all'">全部下級玩家</button></div><NInput v-model:value="search" clearable placeholder="搜尋玩家帳號或路徑" class="search-input"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput></div></NCard>
               <NCard :bordered="false" class="table-card"><NDataTable :columns="playerColumns" :data="filteredPlayers" :pagination="{ pageSize: 8 }" /><div class="privacy-note">隱私提示：手機僅顯示前 2 碼與後 3 碼；信箱僅顯示前 2 個字元，其餘以 * 遮罩。</div></NCard>
             </section>
 
@@ -321,7 +319,7 @@ const playerColumns = [
 
             <section v-else-if="activeKey === 'reports'">
               <div class="section-head"><div><h1>下級報表</h1><p class="muted">以樹狀路徑與層級欄位呈現，避免無限層代理造成數據重複。</p></div><NButton secondary @click="exportMessage('下級報表')">匯出報表</NButton></div>
-              <NCard class="filter-card"><div class="filter-row"><NSelect v-model:value="selectedCycle" :options="[{label:'本週',value:'本週'},{label:'本月',value:'本月'},{label:'上月',value:'上月'}]" style="width: 140px" /><NRadioGroup v-model:value="scope" size="small"><NRadioButton value="direct">只看直屬</NRadioButton><NRadioButton value="all">查看全部下級</NRadioButton></NRadioGroup></div></NCard>
+              <NCard class="filter-card"><div class="filter-row"><NSelect v-model:value="selectedCycle" :options="[{label:'本週',value:'本週'},{label:'本月',value:'本月'},{label:'上月',value:'上月'}]" style="width: 140px" /><div class="scope-toggle"><button :class="{ active: scope === 'direct' }" @click="scope = 'direct'">只看直屬</button><button :class="{ active: scope === 'all' }" @click="scope = 'all'">查看全部下級</button></div></div></NCard>
               <div class="stat-grid"><NCard><NStatistic label="總有效投注" :value="1284600" prefix="TWD " /></NCard><NCard><NStatistic label="總儲值" :value="342800" prefix="TWD " /></NCard><NCard><NStatistic label="產生傭金" :value="28460" prefix="TWD " /></NCard><NCard><NStatistic label="活躍玩家" :value="186" suffix=" 位" /></NCard></div>
               <NCard :bordered="false" class="table-card"><div class="report-header"><span>代理／玩家</span><span>層級</span><span>路徑</span><span>有效投注</span><span>傭金</span></div><div v-for="row in agentRows.slice(0, 4)" :key="row.id" class="report-row"><strong>{{ row.account }}</strong><span>{{ row.level }}</span><span class="path-text">{{ row.path }}</span><span>TWD {{ (row.point * 128460).toLocaleString() }}</span><strong class="positive">TWD {{ (row.point * 2846).toLocaleString() }}</strong></div></NCard>
             </section>

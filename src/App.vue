@@ -15,7 +15,6 @@ import {
   NLayoutHeader,
   NLayoutSider,
   NModal,
-  NNotificationProvider,
   NRadioButton,
   NRadioGroup,
   NSelect,
@@ -25,7 +24,6 @@ import {
   NTabs,
   NTag,
   NThing,
-  useNotification,
 } from 'naive-ui'
 import {
   BarChartOutline,
@@ -72,7 +70,6 @@ const themeOverrides = {
   common: { primaryColor: '#2f6fed', primaryColorHover: '#4c83ef', borderRadius: '10px' },
   Button: { borderRadiusMedium: '9px' },
 }
-const notification = useNotification()
 const loggedIn = ref(false)
 const loginAccount = ref('agent_demo')
 const loginPassword = ref('demo123')
@@ -83,6 +80,7 @@ const showCreateAgent = ref(false)
 const showWithdrawal = ref(false)
 const withdrawalAmount = ref<number | null>(null)
 const selectedCycle = ref('每週')
+const notice = ref<{ type: 'success' | 'warning'; title: string; content: string } | null>(null)
 
 const agentRows = ref<AgentRow[]>([
   { id: 'A-1001', account: 'agent_taipei', level: '總代理', path: 'agent_taipei', currency: 'TWD', point: 6, children: 3, status: '啟用' },
@@ -123,11 +121,16 @@ const filteredPlayers = computed(() => playerRows.value.filter((row) => {
 
 function login() {
   if (!loginAccount.value || !loginPassword.value) {
-    notification.warning({ title: '請輸入登入資訊', content: '此為原型示範，輸入任意非空白帳密即可登入。' })
+    showNotice('warning', '請輸入登入資訊', '此為原型示範，輸入任意非空白帳密即可登入。')
     return
   }
   loggedIn.value = true
   logs.value.unshift({ time: '2026-08-31 10:28:00', type: '登入', actor: loginAccount.value, detail: '代理後台登入成功', ip: '10.20.8.15' })
+}
+
+function showNotice(type: 'success' | 'warning', title: string, content: string) {
+  notice.value = { type, title, content }
+  window.setTimeout(() => { notice.value = null }, 3500)
 }
 
 function logout() {
@@ -143,7 +146,7 @@ function selectNav(key: string) {
 function deactivateAgent(row: AgentRow) {
   row.status = row.status === '啟用' ? '停用' : '啟用'
   logs.value.unshift({ time: '2026-08-31 10:30:00', type: row.status === '啟用' ? '啟用代理' : '停用代理', actor: loginAccount.value, detail: `${row.account} 狀態變更為${row.status}`, ip: '10.20.8.15' })
-  notification.success({ title: '狀態已更新', content: `${row.account} 現在為${row.status}` })
+  showNotice('success', '狀態已更新', `${row.account} 現在為${row.status}`)
 }
 
 function createAgent() {
@@ -151,17 +154,17 @@ function createAgent() {
   agentRows.value.push({ id: `A-${1000 + next}`, account: `new_partner_${String(next).padStart(2, '0')}`, level: '一級代理', path: `agent_taipei > new_partner_${String(next).padStart(2, '0')}`, currency: 'TWD', point: 0, children: 0, status: '啟用' })
   showCreateAgent.value = false
   logs.value.unshift({ time: '2026-08-31 10:31:00', type: '開設代理', actor: loginAccount.value, detail: '建立新的一級代理（立即啟用）', ip: '10.20.8.15' })
-  notification.success({ title: '代理已建立', content: '新代理可立即登入使用；反傭比例預設為 0%。' })
+  showNotice('success', '代理已建立', '新代理可立即登入使用；反傭比例預設為 0%。')
 }
 
 function submitWithdrawal() {
   if (!withdrawalAmount.value || withdrawalAmount.value < 1000) {
-    notification.warning({ title: '未符合提領條件', content: '最低提領金額為 TWD 1,000。' })
+    showNotice('warning', '未符合提領條件', '最低提領金額為 TWD 1,000。')
     return
   }
   showWithdrawal.value = false
   logs.value.unshift({ time: '2026-08-31 10:32:00', type: '提領申請', actor: loginAccount.value, detail: `申請提領 TWD ${withdrawalAmount.value.toLocaleString()}，待平台審核`, ip: '10.20.8.15' })
-  notification.success({ title: '提領申請已送出', content: '平台審核完成前，金額會維持在待審核餘額。' })
+  showNotice('success', '提領申請已送出', '平台審核完成前，金額會維持在待審核餘額。')
   withdrawalAmount.value = null
 }
 
@@ -187,7 +190,8 @@ const playerColumns = [
 
 <template>
   <NConfigProvider :theme-overrides="themeOverrides">
-    <NNotificationProvider>
+    <div>
+      <div v-if="notice" class="toast" :class="notice.type"><strong>{{ notice.title }}</strong><span>{{ notice.content }}</span></div>
       <div v-if="!loggedIn" class="login-page">
         <div class="login-glow glow-one" />
         <div class="login-glow glow-two" />
@@ -291,6 +295,6 @@ const playerColumns = [
 
       <NModal v-model:show="showCreateAgent" preset="card" title="開設下級代理" class="modal-card"><p class="modal-intro">新代理建立後立即啟用；帳號與其他不可變更欄位請由平台客服處理。</p><NForm label-placement="top"><NFormItem label="代理帳號"><NInput placeholder="輸入新代理帳號" /></NFormItem><NFormItem label="代理反傭比例"><NInputNumber :min="0" :max="6" :step="0.5" style="width: 100%"><template #suffix>%</template></NInputNumber></NFormItem><NFormItem label="幣別"><NSelect value="TWD" :options="[{label:'TWD 新台幣',value:'TWD'}]" /></NFormItem></NForm><template #footer><NSpace justify="end"><NButton @click="showCreateAgent = false">取消</NButton><NButton type="primary" @click="createAgent">建立並啟用</NButton></NSpace></template></NModal>
       <NModal v-model:show="showWithdrawal" preset="card" title="申請提領傭金" class="modal-card"><p class="modal-intro">申請將進入平台審核；目前可提領餘額 TWD 28,460。</p><NForm label-placement="top"><NFormItem label="提領金額"><NInputNumber v-model:value="withdrawalAmount" :min="1000" :max="28460" style="width: 100%"><template #prefix>TWD</template></NInputNumber></NFormItem><NFormItem label="收款帳戶"><NSelect value="bank-001" :options="[{label:'台新銀行 · ****1234',value:'bank-001'}]" /></NFormItem></NForm><template #footer><NSpace justify="end"><NButton @click="showWithdrawal = false">取消</NButton><NButton type="primary" @click="submitWithdrawal">送出申請</NButton></NSpace></template></NModal>
-    </NNotificationProvider>
+    </div>
   </NConfigProvider>
 </template>

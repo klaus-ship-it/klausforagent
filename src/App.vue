@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import {
   NButton,
+  NBadge,
   NCard,
   NConfigProvider,
   NDataTable,
@@ -56,6 +57,7 @@ interface AgentRow {
   currency: string
   point: number
   children: number
+  walletBalance: number
   status: '啟用' | '停用'
   planId: string
   model?: 'CPA' | '佔成' | '返佣'
@@ -65,6 +67,8 @@ interface AgentRow {
 interface CommissionPlan {
   id: string
   name: string
+  promoCode: string
+  parentAccount: string
   model: 'CPA' | '佔成' | '返佣'
   cycle: '即時' | '每日' | '每週' | '每月'
   allocationRate: number
@@ -75,13 +79,21 @@ interface CommissionPlan {
 
 interface PlayerRow {
   id: string
+  uid: string
   account: string
-  level: string
+  displayName: string
+  tags: string[]
+  rtp: number
+  vipLevel: string
+  agentLevel: string
+  referralCode?: string
+  status: '啟用' | '鎖定' | '凍結' | '暫停'
+  isOnline: boolean
+  registerAt: string
   path: string
   currency: string
   deposit: number
   bet: number
-  status: '啟用' | '停用'
 }
 
 const themeOverrides = {
@@ -110,11 +122,22 @@ const newAgentRole = ref<Role>('一般代理')
 const showAgentDetail = ref(false)
 const selectedAgent = ref<AgentRow | null>(null)
 const detailTab = ref<'basic' | 'relationship' | 'commission' | 'logs'>('basic')
+const showPlayerDetail = ref(false)
+const selectedPlayer = ref<PlayerRow | null>(null)
+const playerDetailTab = ref<'basic' | 'agent' | 'finance' | 'logs'>('basic')
+const showPlayerEdit = ref(false)
+const showPlayerStatus = ref(false)
+const showPlayerTransfer = ref(false)
+const playerDisplayNameDraft = ref('')
+const playerStatusDraft = ref<PlayerRow['status']>('啟用')
+const playerTransferTarget = ref('')
 const draftPlanId = ref('PLAN-001')
 const newAgentPlanId = ref('PLAN-001')
 const showPlanEditor = ref(false)
 const editingPlan = ref<CommissionPlan | null>(null)
 const planName = ref('')
+const planPromoCode = ref('')
+const planParentAccount = ref('')
 const planModel = ref<'CPA' | '佔成' | '返佣'>('返佣')
 const planCycle = ref<'即時' | '每日' | '每週' | '每月'>('每週')
 const planRate = ref<number | null>(4)
@@ -129,22 +152,22 @@ const selectedCycle = ref('每週')
 const notice = ref<{ type: 'success' | 'warning'; title: string; content: string } | null>(null)
 
 const agentRows = ref<AgentRow[]>([
-  { id: 'A-1001', uid: 'AG-10001', account: 'agent_taipei', displayName: '台北總代理', referralCode: 'AGT-TW-8F4K', phone: '0912345678', email: 'taipei@example.com', contactMethod: 'Line: @agent_taipei', twoFactor: '已啟用', level: '總代理', path: 'agent_taipei', currency: 'TWD', point: 6, children: 3, status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
-  { id: 'A-1002', uid: 'AG-10024', account: 'north_team', displayName: '北區團隊', referralCode: 'AGT-TW-NORTH', phone: '0987654321', email: 'north@example.com', contactMethod: 'Line: @north_team', twoFactor: '未啟用', level: '一級代理', path: 'agent_taipei > north_team', currency: 'TWD', point: 4, children: 8, status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
-  { id: 'A-1003', uid: 'AG-10088', account: 'east_team', displayName: '東區團隊', referralCode: 'AGT-TW-EAST', phone: '0955123788', email: 'east@example.com', contactMethod: 'Email', twoFactor: '未啟用', level: '一級代理', path: 'agent_taipei > east_team', currency: 'TWD', point: 3, children: 5, status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
-  { id: 'A-1004', uid: 'AG-10102', account: 'sub_partner_01', displayName: '合作夥伴 01', referralCode: 'AGT-TW-SUB01', phone: '0933123456', email: 'partner01@example.com', contactMethod: 'Line: @sub_partner_01', twoFactor: '未啟用', level: '二級代理', path: 'agent_taipei > north_team > sub_partner_01', currency: 'TWD', point: 2, children: 2, status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
+  { id: 'A-1001', uid: 'AG-10001', account: 'agent_taipei', displayName: '台北總代理', referralCode: 'AGT-TW-8F4K', phone: '0912345678', email: 'taipei@example.com', contactMethod: 'Line: @agent_taipei', twoFactor: '已啟用', level: '總代理', path: 'agent_taipei', currency: 'TWD', point: 6, children: 3, walletBalance: 28460, status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
+  { id: 'A-1002', uid: 'AG-10024', account: 'north_team', displayName: '北區團隊', referralCode: 'AGT-TW-NORTH', phone: '0987654321', email: 'north@example.com', contactMethod: 'Line: @north_team', twoFactor: '未啟用', level: '一級代理', path: 'agent_taipei > north_team', currency: 'TWD', point: 4, children: 8, walletBalance: 12680, status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
+  { id: 'A-1003', uid: 'AG-10088', account: 'east_team', displayName: '東區團隊', referralCode: 'AGT-TW-EAST', phone: '0955123788', email: 'east@example.com', contactMethod: 'Email', twoFactor: '未啟用', level: '一級代理', path: 'agent_taipei > east_team', currency: 'TWD', point: 3, children: 5, walletBalance: 8340, status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
+  { id: 'A-1004', uid: 'AG-10102', account: 'sub_partner_01', displayName: '合作夥伴 01', referralCode: 'AGT-TW-SUB01', phone: '0933123456', email: 'partner01@example.com', contactMethod: 'Line: @sub_partner_01', twoFactor: '未啟用', level: '二級代理', path: 'agent_taipei > north_team > sub_partner_01', currency: 'TWD', point: 2, children: 2, walletBalance: 4260, status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
 ])
 
 const commissionPlans = ref<CommissionPlan[]>([
-  { id: 'PLAN-001', name: '台灣返佣標準方案', model: '返佣', cycle: '每週', allocationRate: 6, description: '依有效投注額計算返佣；下級可用點數不得超過本方案額度。', assignedCount: 3, status: '啟用' },
-  { id: 'PLAN-002', name: 'CPA 新客獎勵方案', model: 'CPA', cycle: '每月', allocationRate: 4, description: '註冊、首存、流水達標各自設定固定獎勵。', assignedCount: 0, status: '啟用' },
-  { id: 'PLAN-003', name: '佔成合作方案', model: '佔成', cycle: '每月', allocationRate: 5, description: '依玩家總輸贏扣除行政成本後按比例分配，支援負數規則。', assignedCount: 0, status: '啟用' },
+  { id: 'PLAN-001', name: '台灣返佣標準方案', promoCode: 'PLAN-TW-8F4K', parentAccount: 'agent_taipei（總代理）', model: '返佣', cycle: '每週', allocationRate: 6, description: '依有效投注額計算返佣；下級可用點數不得超過本方案額度。', assignedCount: 3, status: '啟用' },
+  { id: 'PLAN-002', name: 'CPA 新客獎勵方案', promoCode: 'PLAN-TW-CPA1', parentAccount: 'agent_taipei（總代理）', model: 'CPA', cycle: '每月', allocationRate: 4, description: '註冊、首存、流水達標各自設定固定獎勵。', assignedCount: 0, status: '啟用' },
+  { id: 'PLAN-003', name: '佔成合作方案', promoCode: 'PLAN-TW-PNL3', parentAccount: 'agent_taipei（總代理）', model: '佔成', cycle: '每月', allocationRate: 5, description: '依玩家總輸贏扣除行政成本後按比例分配，支援負數規則。', assignedCount: 0, status: '啟用' },
 ])
 
 const playerRows = ref<PlayerRow[]>([
-  { id: 'P-20481', account: 'player_k***', level: '一級玩家', path: 'agent_taipei > north_team > player_k***', currency: 'TWD', deposit: 12800, bet: 95600, status: '啟用' },
-  { id: 'P-20482', account: 'member_8***', level: '二級玩家', path: 'agent_taipei > north_team > sub_partner_01 > member_8***', currency: 'TWD', deposit: 8600, bet: 43200, status: '啟用' },
-  { id: 'P-20483', account: 'user_l***', level: '一級玩家', path: 'agent_taipei > east_team > user_l***', currency: 'TWD', deposit: 3200, bet: 18400, status: '停用' },
+  { id: 'P-20481', uid: 'P20481', account: 'player_klaus', displayName: 'Klaus 玩家', tags: ['VIP會員'], rtp: 96.8, vipLevel: 'VIP3', agentLevel: '一級玩家', referralCode: 'PLY-TW-3M7X-62ZD', status: '啟用', isOnline: true, registerAt: '2026-07-18 14:22:08', path: 'agent_taipei > north_team > player_klaus', currency: 'TWD', deposit: 12800, bet: 95600 },
+  { id: 'P-20482', uid: 'P20482', account: 'member_888', displayName: 'Member 888', tags: ['一般'], rtp: 101.2, vipLevel: 'VIP1', agentLevel: '二級玩家', referralCode: 'PLY-TW-3M7X-62ZD', status: '啟用', isOnline: false, registerAt: '2026-06-03 09:41:22', path: 'agent_taipei > north_team > sub_partner_01 > member_888', currency: 'TWD', deposit: 8600, bet: 43200 },
+  { id: 'P-20483', uid: 'P20483', account: 'user_lucky', displayName: 'Lucky 玩家', tags: ['風控關注'], rtp: 108.6, vipLevel: 'VIP0', agentLevel: '一級玩家', referralCode: 'PLY-TW-3M7X-62ZD', status: '凍結', isOnline: false, registerAt: '2026-05-26 20:15:44', path: 'agent_taipei > east_team > user_lucky', currency: 'TWD', deposit: 3200, bet: 18400 },
 ])
 
 const logs = ref([
@@ -173,16 +196,29 @@ const filteredAgents = computed(() => agentRows.value.filter((row) => {
   return inScope && inLevel && inStatus && inCommission && `${row.account}${row.path}`.toLowerCase().includes(search.value.toLowerCase())
 }))
 const filteredPlayers = computed(() => playerRows.value.filter((row) => {
-  const inScope = scope.value === 'all' || row.level === '一級玩家'
-  return inScope && `${row.account}${row.path}`.toLowerCase().includes(search.value.toLowerCase())
+  const inScope = scope.value === 'all' || row.agentLevel === '一級玩家'
+  return inScope && `${row.id}${row.account}${row.displayName}${row.path}`.toLowerCase().includes(search.value.toLowerCase())
 }))
-const planOptions = computed(() => commissionPlans.value.filter((plan) => plan.status === '啟用' && (currentRole.value === '運營商' || plan.model === lineModel.value)).map((plan) => ({ label: `${plan.name}（${plan.model}／${plan.cycle}）`, value: plan.id })))
+const planOptions = computed(() => commissionPlans.value.filter((plan) => plan.status === '啟用' && (currentRole.value === '運營商' || plan.model === lineModel.value)).map((plan) => ({ label: `${plan.name}（${plan.promoCode}／${plan.model}／${plan.cycle}）`, value: plan.id })))
 const selectedPlan = computed(() => commissionPlans.value.find((plan) => plan.id === draftPlanId.value) ?? commissionPlans.value[0])
 const lineModel = computed(() => currentRole.value === '運營商' ? null : (agentRows.value.find((row) => row.account === identity.value.account)?.model ?? '返佣'))
 const visiblePlans = computed(() => commissionPlans.value.filter((plan) => currentRole.value === '運營商' || plan.model === lineModel.value))
 const availablePlanOptions = computed(() => visiblePlans.value.filter((plan) => plan.status === '啟用').map((plan) => ({ label: `${plan.name}（${plan.model}／${plan.cycle}）`, value: plan.id })))
 const lineMaxRate = computed(() => currentRole.value === '運營商' ? 100 : (agentRows.value.find((row) => row.account === identity.value.account)?.point ?? 0))
 const canManagePlans = computed(() => true)
+const canOperatePlayers = computed(() => currentRole.value === '運營商')
+const planParentOptions = computed(() => [
+  { label: 'agent_taipei（總代理）', value: 'agent_taipei（總代理）' },
+  { label: 'north_team（一級代理）', value: 'north_team（一級代理）' },
+  { label: 'east_team（一級代理）', value: 'east_team（一級代理）' },
+])
+const playerStatusOptions = [
+  { label: '啟用', value: '啟用' },
+  { label: '鎖定', value: '鎖定' },
+  { label: '凍結', value: '凍結' },
+  { label: '暫停', value: '暫停' },
+]
+const playerTransferOptions = computed(() => agentRows.value.filter((row) => row.status === '啟用').map((row) => ({ label: `${row.account} · ${row.path}`, value: row.path })))
 
 function login() {
   if (!loginAccount.value || !loginPassword.value) {
@@ -232,7 +268,7 @@ function createAgent() {
   const savedPoint = selected.allocationRate
   const level = currentRole.value === '運營商' ? '總代理' : currentRole.value === '總代理' ? '一級代理' : '二級代理'
   const basePath = currentRole.value === '運營商' ? account : `${identity.value.account} > ${account}`
-  agentRows.value.push({ id: `A-${1000 + next}`, uid: `AG-${10000 + next}`, account, displayName: newAgentName.value.trim() || account, referralCode: `AGT-${newAgentCurrency.value}-${String(next).padStart(4, '0')}`, phone: newAgentPhone.value.trim(), email: newAgentEmail.value.trim(), contactMethod: '尚未設定', twoFactor: '未啟用', level, path: basePath, currency: newAgentCurrency.value, point: savedPoint, children: 0, status: '啟用', planId: selected.id, model: selected.model, cycle: selected.cycle })
+  agentRows.value.push({ id: `A-${1000 + next}`, uid: `AG-${10000 + next}`, account, displayName: newAgentName.value.trim() || account, referralCode: `AGT-${newAgentCurrency.value}-${String(next).padStart(4, '0')}`, phone: newAgentPhone.value.trim(), email: newAgentEmail.value.trim(), contactMethod: '尚未設定', twoFactor: '未啟用', level, path: basePath, currency: newAgentCurrency.value, point: savedPoint, children: 0, walletBalance: 0, status: '啟用', planId: selected.id, model: selected.model, cycle: selected.cycle })
   selected.assignedCount += 1
   showCreateAgent.value = false
   newAgentAccount.value = ''
@@ -304,6 +340,8 @@ function saveAgentPlan() {
 function openPlanEditor(plan?: CommissionPlan) {
   editingPlan.value = plan ?? null
   planName.value = plan?.name ?? ''
+  planPromoCode.value = plan?.promoCode ?? `PLAN-${newAgentCurrency.value}-${String(commissionPlans.value.length + 1).padStart(3, '0')}`
+  planParentAccount.value = plan?.parentAccount ?? `${identity.value.account}（${identity.value.label}）`
   planModel.value = plan?.model ?? '返佣'
   planCycle.value = plan?.cycle ?? '每週'
   planRate.value = plan?.allocationRate ?? 4
@@ -312,8 +350,8 @@ function openPlanEditor(plan?: CommissionPlan) {
 }
 
 function savePlan() {
-  if (!planName.value.trim() || planRate.value === null) {
-    showNotice('warning', '方案資料未完成', '請填寫方案名稱與可分配點數。')
+  if (!planName.value.trim() || !planPromoCode.value.trim() || !planParentAccount.value.trim() || planRate.value === null) {
+    showNotice('warning', '方案資料未完成', '請填寫方案名稱、推廣碼、所屬上級與默認可分配點數。')
     return
   }
   if (currentRole.value !== '運營商' && planModel.value !== lineModel.value) {
@@ -326,6 +364,8 @@ function savePlan() {
   }
   if (editingPlan.value) {
     editingPlan.value.name = planName.value.trim()
+    editingPlan.value.promoCode = planPromoCode.value.trim()
+    editingPlan.value.parentAccount = planParentAccount.value.trim()
     editingPlan.value.model = planModel.value
     editingPlan.value.cycle = planCycle.value
     editingPlan.value.allocationRate = planRate.value
@@ -333,7 +373,7 @@ function savePlan() {
     showNotice('success', '傭金方案已更新', `「${editingPlan.value.name}」設定已儲存。`)
   } else {
     const id = `PLAN-${String(commissionPlans.value.length + 1).padStart(3, '0')}`
-    commissionPlans.value.push({ id, name: planName.value.trim(), model: planModel.value, cycle: planCycle.value, allocationRate: planRate.value, description: planDescription.value.trim() || '依此方案規則產生代理傭金。', assignedCount: 0, status: '啟用' })
+    commissionPlans.value.push({ id, name: planName.value.trim(), promoCode: planPromoCode.value.trim(), parentAccount: planParentAccount.value.trim(), model: planModel.value, cycle: planCycle.value, allocationRate: planRate.value, description: planDescription.value.trim() || '依此方案規則產生代理傭金。', assignedCount: 0, status: '啟用' })
     showNotice('success', '傭金方案已建立', `「${planName.value.trim()}」可供代理套用。`)
   }
   showPlanEditor.value = false
@@ -351,19 +391,98 @@ async function copyReferral(code: string, label: string) {
   showNotice('success', `${label}已複製`, code)
 }
 
+function openPlayer(row: PlayerRow) {
+  selectedPlayer.value = row
+  playerDetailTab.value = 'basic'
+  showPlayerDetail.value = true
+}
+
+function requireOperator(action: string) {
+  if (canOperatePlayers.value) return true
+  showNotice('warning', '目前角色僅可查看', `總代理與一般代理不可${action}會員，需由運營商操作。`)
+  return false
+}
+
+function editPlayer(row: PlayerRow) {
+  if (!requireOperator('編輯資料')) return
+  selectedPlayer.value = row
+  playerDisplayNameDraft.value = row.displayName
+  showPlayerEdit.value = true
+}
+
+function savePlayerEdit() {
+  if (!selectedPlayer.value || !playerDisplayNameDraft.value.trim()) {
+    showNotice('warning', '資料未完成', '顯示名稱不可為空白。')
+    return
+  }
+  selectedPlayer.value.displayName = playerDisplayNameDraft.value.trim()
+  logs.value.unshift({ time: '2026-08-31 10:42:00', type: '編輯玩家資料', actor: loginAccount.value, detail: `${selectedPlayer.value.account} 顯示名稱已更新`, ip: '10.20.8.15' })
+  showPlayerEdit.value = false
+  showNotice('success', '玩家資料已更新', `${selectedPlayer.value.account} 的顯示名稱已儲存。`)
+}
+
+function managePlayerStatus(row: PlayerRow) {
+  if (!requireOperator('修改狀態')) return
+  selectedPlayer.value = row
+  playerStatusDraft.value = row.status
+  showPlayerStatus.value = true
+}
+
+function savePlayerStatus() {
+  if (!selectedPlayer.value) return
+  const oldStatus = selectedPlayer.value.status
+  selectedPlayer.value.status = playerStatusDraft.value
+  logs.value.unshift({ time: '2026-08-31 10:43:00', type: '玩家狀態管理', actor: loginAccount.value, detail: `${selectedPlayer.value.account} 狀態 ${oldStatus} → ${playerStatusDraft.value}`, ip: '10.20.8.15' })
+  showPlayerStatus.value = false
+  showNotice('success', '玩家狀態已更新', `${selectedPlayer.value.account} 現在為${playerStatusDraft.value}。`)
+}
+
+function transferPlayer(row: PlayerRow) {
+  if (!requireOperator('轉線')) return
+  selectedPlayer.value = row
+  playerTransferTarget.value = ''
+  showPlayerTransfer.value = true
+}
+
+function savePlayerTransfer() {
+  if (!selectedPlayer.value || !playerTransferTarget.value) {
+    showNotice('warning', '尚未選擇代理線', '請選擇新的代理線後再送出。')
+    return
+  }
+  const oldPath = selectedPlayer.value.path
+  const account = selectedPlayer.value.account
+  selectedPlayer.value.path = `${playerTransferTarget.value} > ${account}`
+  logs.value.unshift({ time: '2026-08-31 10:44:00', type: '玩家轉線', actor: loginAccount.value, detail: `${account} 已由 ${oldPath} 轉入 ${selectedPlayer.value.path}`, ip: '10.20.8.15' })
+  showPlayerTransfer.value = false
+  showNotice('success', '玩家轉線已建立', '轉線生效時間依平台排程規則處理。')
+}
+
+function playerStatusType(status: PlayerRow['status']) {
+  const map: Record<PlayerRow['status'], 'success' | 'warning' | 'error' | 'info'> = { 啟用: 'success', 鎖定: 'warning', 凍結: 'info', 暫停: 'error' }
+  return map[status]
+}
+
 function exportMessage(label: string) {
   showNotice('success', `${label}已準備`, '原型示範不會下載真實資料；正式版將依目前篩選條件匯出。')
 }
 
-const playerColumns = [
-  { title: '玩家帳號', key: 'account' },
-  { title: '層級', key: 'level' },
-  { title: '樹狀路徑', key: 'path' },
-  { title: '幣別', key: 'currency' },
-  { title: '期間儲值', key: 'deposit', render: (row: PlayerRow) => row.deposit.toLocaleString() },
-  { title: '期間有效投注', key: 'bet', render: (row: PlayerRow) => row.bet.toLocaleString() },
-  { title: '狀態', key: 'status' },
-]
+const playerColumns = computed(() => [
+  { title: '玩家 ID', key: 'id', width: 110 },
+  { title: '玩家帳號', key: 'account', width: 150 },
+  { title: '顯示名稱', key: 'displayName', width: 140 },
+  { title: '標籤', key: 'tags', width: 150, render: (row: PlayerRow) => h('div', { class: 'table-tags' }, row.tags.map((tag) => h(NTag, { size: 'small', round: true, type: tag === '風控關注' ? 'warning' : 'default' }, { default: () => tag }))) },
+  { title: 'RTP', key: 'rtp', width: 80, render: (row: PlayerRow) => h('span', { class: row.rtp < 100 ? 'positive' : 'negative' }, `${row.rtp}%`) },
+  { title: 'VIP 等級', key: 'vipLevel', width: 100 },
+  { title: '帳號狀態', key: 'status', width: 100, render: (row: PlayerRow) => h(NTag, { type: playerStatusType(row.status), bordered: false, round: true }, { default: () => row.status }) },
+  { title: '在線狀態', key: 'isOnline', width: 100, render: (row: PlayerRow) => h(NBadge, { dot: true, type: row.isOnline ? 'success' : 'default' }, () => row.isOnline ? '在線' : '離線') },
+  { title: '註冊時間', key: 'registerAt', width: 170 },
+  { title: '操作', key: 'actions', width: canOperatePlayers.value ? 290 : 120, fixed: 'right' as const, render: (row: PlayerRow) => h('div', { class: 'table-actions' }, [
+    h(NButton, { size: 'small', secondary: true, type: 'primary', onClick: () => openPlayer(row) }, { default: () => '檢視詳情' }),
+    canOperatePlayers.value ? h(NButton, { size: 'small', quaternary: true, onClick: () => transferPlayer(row) }, { default: () => '轉線' }) : null,
+    canOperatePlayers.value ? h(NButton, { size: 'small', quaternary: true, onClick: () => managePlayerStatus(row) }, { default: () => '狀態管理' }) : null,
+    canOperatePlayers.value ? h(NButton, { size: 'small', quaternary: true, onClick: () => editPlayer(row) }, { default: () => '編輯資料' }) : null,
+  ]) },
+])
 </script>
 
 <template>
@@ -432,13 +551,13 @@ const playerColumns = [
               <div class="role-banner"><strong>{{ identity.label }}可執行範圍</strong><span>{{ currentRole === '運營商' ? '建立總代理、設定傭金模式與結算週期，查看全平台代理網絡。' : currentRole === '總代理' ? '建立直屬代理、套用同一代理線傭金模式，查看全部下級與各代理線報表。' : '建立直屬下級代理、套用上級提供的傭金模式，僅查看自身代理線資料。' }}</span></div>
               <div class="agent-focus-grid"><NCard class="focus-card"><div class="focus-icon">A</div><div><span>目前登入角色</span><strong>{{ identity.account }}</strong><small>{{ identity.label }} · {{ identity.currency }} · 可查看{{ currentRole === '運營商' ? '全平台' : '自身代理線' }}</small></div></NCard><NCard class="focus-card"><div class="focus-icon blue">%</div><div><span>傭金方案</span><strong>三種模式可配置</strong><small>CPA／佔成／返佣分開管理，代理僅套用方案。</small></div></NCard><NCard class="focus-card"><div class="focus-icon green">↳</div><div><span>代理線狀態</span><strong>{{ currentRole === '運營商' ? '12 條 · 多幣別' : '3 條 · 幣別一致' }}</strong><small>同一條代理線內代理與玩家必須使用相同幣別。</small></div></NCard></div>
               <div class="table-section-label"><strong>篩選欄位</strong><span>設定查看範圍、代理層級、傭金模式與狀態</span></div><NCard class="filter-card"><div class="filter-row"><div class="scope-toggle"><button :class="{ active: scope === 'direct' }" @click="scope = 'direct'">只看直屬</button><button :class="{ active: scope === 'all' }" @click="scope = 'all'">查看全部下級</button></div><NSelect v-model:value="agentLevelFilter" clearable placeholder="代理層級" :options="[{label:'總代理',value:'總代理'},{label:'一級代理',value:'一級代理'},{label:'二級代理',value:'二級代理'}]" style="width: 140px" /><NSelect v-model:value="agentCommissionFilter" clearable placeholder="傭金模式" :options="[{label:'CPA',value:'CPA'},{label:'佔成',value:'佔成'},{label:'返佣',value:'返佣'}]" style="width: 130px" /><NSelect v-model:value="agentStatusFilter" clearable placeholder="狀態" :options="[{label:'啟用',value:'啟用'},{label:'停用',value:'停用'}]" style="width: 120px" /><NInput v-model:value="search" clearable placeholder="搜尋代理帳號" class="search-input"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput></div></NCard>
-              <div class="table-section-label"><strong>資料顯示欄位</strong><span>代理帳號與層級分開顯示；樹狀路徑請進入詳情查看</span></div><NCard :bordered="false" class="table-card"><div class="agent-table-wrap"><div class="agent-table"><div class="agent-table-head"><span>代理帳號</span><span>層級</span><span>幣別</span><span>傭金模式</span><span>結算週期</span><span>下級數</span><span>狀態</span><span>操作</span></div><div v-for="row in filteredAgents" :key="row.id" class="agent-table-row"><button class="account-link" @click="openAgent(row)">{{ row.account }}</button><span>{{ row.level }}</span><span>{{ row.currency }}</span><span>{{ row.model ?? '沿用上級' }}</span><span>{{ row.cycle ?? '沿用上級' }}</span><span>{{ row.children }}</span><NTag size="small" :type="row.status === '啟用' ? 'success' : 'error'" round>{{ row.status }}</NTag><div class="table-actions"><NButton quaternary size="small" @click="openAgent(row)">查看詳情</NButton><NButton quaternary size="small" @click="deactivateAgent(row)">{{ row.status === '啟用' ? '停用' : '啟用' }}</NButton></div></div></div></div><div class="table-hint">完整樹狀路徑集中於代理詳情的「代理關係」；傭金規則集中於「傭金方案」管理。</div></NCard>
+              <div class="table-section-label"><strong>資料顯示欄位</strong><span>代理帳號與層級分開顯示；樹狀路徑請進入詳情查看</span></div><NCard :bordered="false" class="table-card"><div class="agent-table-wrap"><div class="agent-table"><div class="agent-table-head"><span>代理帳號</span><span>層級</span><span>幣別</span><span>傭金模式</span><span>結算週期</span><span>下級數</span><span>傭金錢包餘額</span><span>狀態</span><span>操作</span></div><div v-for="row in filteredAgents" :key="row.id" class="agent-table-row"><button class="account-link" @click="openAgent(row)">{{ row.account }}</button><span>{{ row.level }}</span><span>{{ row.currency }}</span><span>{{ row.model ?? '沿用上級' }}</span><span>{{ row.cycle ?? '沿用上級' }}</span><span>{{ row.children }}</span><strong class="wallet-value">{{ row.currency }} {{ row.walletBalance.toLocaleString() }}</strong><NTag size="small" :type="row.status === '啟用' ? 'success' : 'error'" round>{{ row.status }}</NTag><div class="table-actions"><NButton quaternary size="small" @click="openAgent(row)">查看詳情</NButton><NButton quaternary size="small" @click="deactivateAgent(row)">{{ row.status === '啟用' ? '停用' : '啟用' }}</NButton></div></div></div></div><div class="table-hint">傭金錢包餘額為目前可提領金額；完整樹狀路徑集中於代理詳情的「代理關係」，傭金規則集中於「傭金方案」管理。</div></NCard>
             </section>
 
             <section v-else-if="activeKey === 'players'">
-              <div class="section-head"><div><h1>玩家管理</h1><p class="muted">玩家資料僅限查看，手機與信箱依隱私規則遮罩。</p></div><NTag type="info" round>唯讀資料</NTag></div>
+              <div class="section-head"><div><h1>玩家管理</h1><p class="muted">完整呈現運營後台玩家列表；代理相關路徑於玩家詳情的「代理關係」分頁查看。</p></div><NTag :type="canOperatePlayers ? 'warning' : 'info'" round>{{ canOperatePlayers ? '運營商可操作' : '代理唯讀' }}</NTag></div>
               <NCard class="filter-card"><div class="filter-row"><div class="scope-toggle"><button :class="{ active: scope === 'direct' }" @click="scope = 'direct'">直屬玩家</button><button :class="{ active: scope === 'all' }" @click="scope = 'all'">全部下級玩家</button></div><NInput v-model:value="search" clearable placeholder="搜尋玩家帳號或路徑" class="search-input"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput></div></NCard>
-              <NCard :bordered="false" class="table-card"><NDataTable :columns="playerColumns" :data="filteredPlayers" :pagination="{ pageSize: 8 }" /><div class="privacy-note">隱私提示：手機僅顯示前 2 碼與後 3 碼；信箱僅顯示前 2 個字元，其餘以 * 遮罩。</div></NCard>
+              <NCard :bordered="false" class="table-card"><NDataTable :columns="playerColumns" :data="filteredPlayers" :pagination="{ pageSize: 8 }" /><div class="privacy-note">權限提示：總代理與一般代理只能查看玩家資料；轉線、狀態管理、編輯資料僅由運營商執行。隱私欄位依運營後台規則遮罩。</div></NCard>
             </section>
 
             <section v-else-if="activeKey === 'codes'">
@@ -448,9 +567,9 @@ const playerColumns = [
             </section>
 
             <section v-else-if="activeKey === 'commissionPlans'">
-              <div class="section-head"><div><h1>傭金方案</h1><p class="muted">獨立管理 CPA、佔成、返佣三種傭金模式；代理建立或調整時套用方案，不在代理列表直接修改點數。</p><p class="line-rule">{{ currentRole === '運營商' ? '運營商可建立與編輯三種模式方案。' : `目前代理線由總代設定為${lineModel}，本線只能建立或套用${lineModel}方案，點數上限為${lineMaxRate}%。` }}</p></div><NButton v-if="canManagePlans" type="primary" @click="openPlanEditor()">＋ 新增傭金方案</NButton></div>
+              <div class="section-head"><div><h1>傭金方案</h1><p class="muted">獨立管理 CPA、佔成、返佣三種傭金模式；每個方案綁定一組推廣碼，代理建立或調整時套用方案。</p><p class="line-rule">{{ currentRole === '運營商' ? '運營商可建立與編輯三種模式方案。' : `目前代理線由總代設定為${lineModel}，本線只能建立或套用${lineModel}方案，點數上限為${lineMaxRate}%。` }}</p></div><NButton v-if="canManagePlans" type="primary" @click="openPlanEditor()">＋ 新增傭金方案</NButton></div>
               <div class="plan-mode-grid"><NCard v-for="mode in [{name:'CPA',desc:'註冊、首存、流水達標各自設定固定獎勵。'},{name:'佔成',desc:'依玩家總輸贏扣除行政成本後按比例分配。'},{name:'返佣',desc:'依有效投注額按返佣比例計算。'}]" :key="mode.name" class="plan-mode-card"><strong>{{ mode.name }}</strong><span>{{ mode.desc }}</span></NCard></div>
-              <div class="table-section-label"><strong>方案資料</strong><span>代理套用方案後，依方案的模式、週期與可分配點數計算</span></div><NCard :bordered="false" class="table-card"><div class="plan-table-wrap"><div class="plan-table"><div class="plan-table-head"><span>方案名稱</span><span>傭金模式</span><span>結算週期</span><span>可分配點數</span><span>套用代理</span><span>狀態</span><span>操作</span></div><div v-for="plan in visiblePlans" :key="plan.id" class="plan-table-row"><div><strong>{{ plan.name }}</strong><small>{{ plan.description }}</small></div><span>{{ plan.model }}</span><span>{{ plan.cycle }}</span><span>{{ plan.allocationRate }}%</span><span>{{ plan.assignedCount }} 位</span><NTag size="small" :type="plan.status === '啟用' ? 'success' : 'error'" round>{{ plan.status }}</NTag><div class="table-actions"><NButton v-if="canManagePlans" quaternary size="small" @click="openPlanEditor(plan)">編輯</NButton><NButton v-if="canManagePlans" quaternary size="small" @click="togglePlan(plan)">{{ plan.status === '啟用' ? '停用' : '啟用' }}</NButton><span v-if="!canManagePlans" class="muted">僅可套用</span></div></div></div></div><div class="table-hint">可分配點數代表本方案代理可設定給下一級的最高額度；同一條代理線只能使用一種傭金模式，下級方案不得超過上級額度。</div></NCard>
+              <div class="table-section-label"><strong>方案資料</strong><span>推廣碼代表註冊歸屬上級；方案默認點數即下級可分配的最高額度</span></div><NCard :bordered="false" class="table-card"><div class="plan-table-wrap"><div class="plan-table"><div class="plan-table-head"><span>方案名稱</span><span>方案推廣碼</span><span>註冊上級</span><span>傭金模式</span><span>結算週期</span><span>默認點數</span><span>套用代理</span><span>狀態</span><span>操作</span></div><div v-for="plan in visiblePlans" :key="plan.id" class="plan-table-row"><div><strong>{{ plan.name }}</strong><small>{{ plan.description }}</small></div><span class="code-text">{{ plan.promoCode }}</span><span>{{ plan.parentAccount }}</span><span>{{ plan.model }}</span><span>{{ plan.cycle }}</span><span>{{ plan.allocationRate }}%</span><span>{{ plan.assignedCount }} 位</span><NTag size="small" :type="plan.status === '啟用' ? 'success' : 'error'" round>{{ plan.status }}</NTag><div class="table-actions"><NButton v-if="canManagePlans" quaternary size="small" @click="openPlanEditor(plan)">編輯</NButton><NButton quaternary size="small" @click="copyReferral(plan.promoCode, '方案推廣碼')">複製碼</NButton><NButton v-if="canManagePlans" quaternary size="small" @click="togglePlan(plan)">{{ plan.status === '啟用' ? '停用' : '啟用' }}</NButton><span v-if="!canManagePlans" class="muted">僅可套用</span></div></div></div></div><div class="table-hint">每個方案推廣碼都固定記錄註冊上級、傭金模式、結算週期與默認點數；同一條代理線只能使用一種傭金模式，下級方案不得超過上級額度。</div></NCard>
             </section>
 
             <section v-else-if="activeKey === 'commission'">
@@ -492,19 +611,32 @@ const playerColumns = [
           <div v-if="detailTab === 'basic'" class="agent-detail-grid">
             <div><span>登入帳號</span><strong>{{ selectedAgent.account }}</strong></div><div><span>登入密碼</span><strong>••••••••</strong><p class="modal-help">如需重設請聯繫平台客服。</p></div>
             <div><span>帳號類型</span><strong>{{ selectedAgent.level }}</strong><NTag size="small" round>不可修改</NTag></div><div><span>代理 UID（系統生成）</span><strong>{{ selectedAgent.uid || selectedAgent.id }}</strong></div>
-            <div><span>推廣碼</span><strong>{{ selectedAgent.referralCode || '未設定' }}</strong></div><div><span>真實姓名</span><strong>{{ selectedAgent.displayName || '未填寫' }}</strong></div>
+             <div><span>推廣碼</span><div class="detail-inline"><strong>{{ selectedAgent.referralCode || '未設定' }}</strong><NButton v-if="selectedAgent.referralCode" size="small" quaternary @click="copyReferral(selectedAgent.referralCode, '代理推廣碼')">複製</NButton></div></div><div><span>真實姓名</span><strong>{{ selectedAgent.displayName || '未填寫' }}</strong></div>
             <div><span>手機號碼</span><strong>{{ maskPhone(selectedAgent.phone) }}</strong></div><div><span>聯絡方式</span><strong>{{ selectedAgent.contactMethod || '未設定' }}</strong></div>
             <div><span>Email</span><strong>{{ maskEmail(selectedAgent.email) }}</strong></div><div><span>2FA 雙重驗證</span><NTag size="small" :type="selectedAgent.twoFactor === '已啟用' ? 'success' : 'default'" round>{{ selectedAgent.twoFactor || '未啟用' }}</NTag></div>
-            <div><span>幣別</span><strong>{{ selectedAgent.currency }}</strong></div><div><span>目前狀態</span><NTag :type="selectedAgent.status === '啟用' ? 'success' : 'error'" round>{{ selectedAgent.status }}</NTag></div>
+             <div><span>幣別</span><strong>{{ selectedAgent.currency }}</strong></div><div><span>代理傭金錢包餘額</span><strong class="positive">{{ selectedAgent.currency }} {{ selectedAgent.walletBalance.toLocaleString() }}</strong></div><div><span>目前狀態</span><NTag :type="selectedAgent.status === '啟用' ? 'success' : 'error'" round>{{ selectedAgent.status }}</NTag></div>
           </div>
           <div v-else-if="detailTab === 'relationship'" class="agent-detail-grid"><div class="full"><span>完整樹狀路徑</span><strong>{{ selectedAgent.path }}</strong></div><div><span>代理層級</span><strong>{{ selectedAgent.level }}</strong></div><div><span>直屬下級數</span><strong>{{ selectedAgent.children }} 位</strong></div><div class="full"><span>關係說明</span><p class="modal-help">此代理只能隸屬一條代理線；轉移代理線時，生效前後訂單依原／新代理線歸屬，不回溯重算歷史傭金。</p></div></div>
-          <div v-else-if="detailTab === 'commission'" class="agent-detail-grid"><div class="full"><span>套用傭金方案</span><NSelect v-model:value="draftPlanId" :options="planOptions" /></div><div><span>傭金模式</span><strong>{{ selectedPlan.model }}</strong></div><div><span>結算週期</span><strong>{{ selectedPlan.cycle }}</strong></div><div><span>可分配點數</span><strong>{{ selectedPlan.allocationRate }}%</strong></div><div class="full"><span>方案規則</span><p class="modal-help">{{ selectedPlan.description }} 下級代理可設定的點數不得超過上級可分配額度。</p></div></div>
+           <div v-else-if="detailTab === 'commission'" class="agent-detail-grid"><div class="full"><span>套用傭金方案</span><NSelect v-model:value="draftPlanId" :options="planOptions" /></div><div><span>方案推廣碼</span><strong class="code-text">{{ selectedPlan.promoCode }}</strong></div><div><span>註冊上級</span><strong>{{ selectedPlan.parentAccount }}</strong></div><div><span>傭金模式</span><strong>{{ selectedPlan.model }}</strong></div><div><span>結算週期</span><strong>{{ selectedPlan.cycle }}</strong></div><div><span>默認可分配點數</span><strong>{{ selectedPlan.allocationRate }}%</strong></div><div class="full"><span>方案規則</span><p class="modal-help">{{ selectedPlan.description }} 下級代理可設定的點數不得超過上級可分配額度。</p></div></div>
           <div v-else class="detail-log-list"><div v-for="log in logs.filter((item) => item.detail.includes(selectedAgent?.account ?? '')).slice(0, 5)" :key="`${log.time}-${log.detail}`" class="recent-row"><div class="log-dot" /><div><strong>{{ log.type }}</strong><span>{{ log.detail }}</span></div><time>{{ log.time }}</time></div><p v-if="!logs.some((item) => item.detail.includes(selectedAgent?.account ?? ''))" class="modal-help">目前沒有此代理的操作紀錄。</p></div>
-        </template>
-        <template #footer><NSpace justify="space-between" style="width: 100%"><NButton secondary @click="selectedAgent && deactivateAgent(selectedAgent)">{{ selectedAgent?.status === '啟用' ? '停用代理' : '啟用代理' }}</NButton><NSpace><NButton @click="showAgentDetail = false">關閉</NButton><NButton v-if="detailTab === 'commission'" type="primary" @click="saveAgentPlan">儲存傭金方案</NButton></NSpace></NSpace></template>
+       </template>
+       <template #footer><NSpace justify="space-between" style="width: 100%"><NButton secondary @click="selectedAgent && deactivateAgent(selectedAgent)">{{ selectedAgent?.status === '啟用' ? '停用代理' : '啟用代理' }}</NButton><NSpace><NButton @click="showAgentDetail = false">關閉</NButton><NButton v-if="detailTab === 'commission'" type="primary" @click="saveAgentPlan">儲存傭金方案</NButton></NSpace></NSpace></template>
       </NModal>
+      <NModal v-model:show="showPlayerDetail" preset="card" :title="selectedPlayer ? `玩家詳情 · ${selectedPlayer.account}` : '玩家詳情'" class="modal-card">
+        <template v-if="selectedPlayer">
+          <div class="detail-tabs"><button :class="{ active: playerDetailTab === 'basic' }" @click="playerDetailTab = 'basic'">基本資料</button><button :class="{ active: playerDetailTab === 'agent' }" @click="playerDetailTab = 'agent'">代理關係</button><button :class="{ active: playerDetailTab === 'finance' }" @click="playerDetailTab = 'finance'">資金與投注</button><button :class="{ active: playerDetailTab === 'logs' }" @click="playerDetailTab = 'logs'">操作紀錄</button></div>
+          <div v-if="playerDetailTab === 'basic'" class="agent-detail-grid"><div><span>玩家 ID</span><strong>{{ selectedPlayer.id }}</strong></div><div><span>玩家帳號</span><strong>{{ selectedPlayer.account }}</strong></div><div><span>顯示名稱</span><strong>{{ selectedPlayer.displayName }}</strong></div><div><span>VIP 等級</span><strong>{{ selectedPlayer.vipLevel }}</strong></div><div><span>標籤</span><div class="table-tags"> <NTag v-for="tag in selectedPlayer.tags" :key="tag" size="small" round>{{ tag }}</NTag></div></div><div><span>RTP</span><strong :class="selectedPlayer.rtp < 100 ? 'positive' : 'negative'">{{ selectedPlayer.rtp }}%</strong></div><div><span>帳號狀態</span><NTag :type="playerStatusType(selectedPlayer.status)" round>{{ selectedPlayer.status }}</NTag></div><div><span>在線狀態</span><NTag :type="selectedPlayer.isOnline ? 'success' : 'default'" round>{{ selectedPlayer.isOnline ? '在線' : '離線' }}</NTag></div><div class="full"><span>註冊時間</span><strong>{{ selectedPlayer.registerAt }}</strong></div></div>
+          <div v-else-if="playerDetailTab === 'agent'" class="agent-detail-grid"><div class="full"><span>完整樹狀路徑</span><strong>{{ selectedPlayer.path }}</strong></div><div><span>玩家層級</span><strong>{{ selectedPlayer.agentLevel }}</strong></div><div><span>所屬幣別</span><strong>{{ selectedPlayer.currency }}</strong></div><div class="full"><span>註冊使用推廣碼</span><div class="detail-inline"><strong class="code-text">{{ selectedPlayer.referralCode || '未記錄' }}</strong><NButton v-if="selectedPlayer.referralCode" size="small" quaternary @click="copyReferral(selectedPlayer.referralCode, '玩家推廣碼')">複製</NButton></div></div><div class="full"><span>代理權限</span><p class="modal-help">代理後台僅能查看玩家所屬代理線；轉線、狀態管理與編輯資料由運營商執行。</p></div></div>
+          <div v-else-if="playerDetailTab === 'finance'" class="agent-detail-grid"><div><span>期間儲值</span><strong>{{ selectedPlayer.currency }} {{ selectedPlayer.deposit.toLocaleString() }}</strong></div><div><span>期間有效投注</span><strong>{{ selectedPlayer.currency }} {{ selectedPlayer.bet.toLocaleString() }}</strong></div><div class="full"><span>資料權限</span><p class="modal-help">總代理與一般代理可查看下級資金與投注報表，但不可進行轉帳、加扣款或修改資料。</p></div></div>
+          <div v-else class="detail-log-list"><div v-for="log in logs.filter((item) => item.detail.includes(selectedPlayer?.account ?? '')).slice(0, 5)" :key="`${log.time}-${log.detail}`" class="recent-row"><div class="log-dot" /><div><strong>{{ log.type }}</strong><span>{{ log.detail }}</span></div><time>{{ log.time }}</time></div><p v-if="!logs.some((item) => item.detail.includes(selectedPlayer?.account ?? ''))" class="modal-help">目前沒有此玩家的操作紀錄。</p></div>
+        </template>
+        <template #footer><NSpace justify="end"><NButton @click="showPlayerDetail = false">關閉</NButton></NSpace></template>
+      </NModal>
+      <NModal v-model:show="showPlayerEdit" preset="card" title="編輯玩家資料" class="modal-card"><p class="modal-intro">僅運營商可以編輯玩家資料；代理角色只能查看。</p><NForm label-placement="top"><NFormItem label="顯示名稱"><NInput v-model:value="playerDisplayNameDraft" /></NFormItem></NForm><template #footer><NSpace justify="end"><NButton @click="showPlayerEdit = false">取消</NButton><NButton type="primary" @click="savePlayerEdit">儲存</NButton></NSpace></template></NModal>
+      <NModal v-model:show="showPlayerStatus" preset="card" title="玩家狀態管理" class="modal-card"><p class="modal-intro">僅運營商可以修改玩家帳號狀態。</p><NForm label-placement="top"><NFormItem label="帳號狀態"><NSelect v-model:value="playerStatusDraft" :options="playerStatusOptions" /></NFormItem></NForm><template #footer><NSpace justify="end"><NButton @click="showPlayerStatus = false">取消</NButton><NButton type="primary" @click="savePlayerStatus">儲存</NButton></NSpace></template></NModal>
+      <NModal v-model:show="showPlayerTransfer" preset="card" title="玩家轉線" class="modal-card"><p class="modal-intro">僅運營商可以操作轉線；轉線後新產生的資料歸入新代理線，歷史資料不回溯重算。</p><NForm label-placement="top"><NFormItem label="新代理線"><NSelect v-model:value="playerTransferTarget" :options="playerTransferOptions" placeholder="選擇啟用中的代理線" /></NFormItem></NForm><template #footer><NSpace justify="end"><NButton @click="showPlayerTransfer = false">取消</NButton><NButton type="primary" @click="savePlayerTransfer">建立轉線</NButton></NSpace></template></NModal>
       <NModal v-model:show="showCreateAgent" preset="card" :title="createTitle" class="modal-card"><p class="modal-intro">{{ currentRole === '運營商' ? '建立總代理時指定幣別與傭金方案；建立後可立即登入。' : '建立下級代理後立即啟用；代理只能隸屬一條代理線，傭金規則請套用既有方案。' }}</p><NForm label-placement="top"><div class="form-two-col"><NFormItem label="代理帳號"><NInput v-model:value="newAgentAccount" placeholder="輸入新代理帳號" /></NFormItem><NFormItem label="代理名稱"><NInput v-model:value="newAgentName" placeholder="輸入顯示名稱" /></NFormItem></div><div class="form-two-col"><NFormItem label="登入密碼"><NInput v-model:value="newAgentPassword" type="password" placeholder="設定初始登入密碼" /></NFormItem><NFormItem label="聯絡手機"><NInput v-model:value="newAgentPhone" placeholder="選填" /></NFormItem></div><NFormItem label="聯絡 Email"><NInput v-model:value="newAgentEmail" placeholder="選填" /></NFormItem><div class="form-two-col"><NFormItem label="套用傭金方案"><NSelect v-model:value="newAgentPlanId" :options="planOptions" /></NFormItem><NFormItem label="幣別"><NSelect v-model:value="newAgentCurrency" :options="[{label:'TWD 新台幣',value:'TWD'},{label:'USD 美元',value:'USD'},{label:'JPY 日圓',value:'JPY'}]" /></NFormItem></div></NForm><template #footer><NSpace justify="end"><NButton @click="showCreateAgent = false">取消</NButton><NButton type="primary" @click="createAgent">建立並啟用</NButton></NSpace></template></NModal>
-      <NModal v-model:show="showPlanEditor" preset="card" :title="editingPlan ? '編輯傭金方案' : '新增傭金方案'" class="modal-card"><p class="modal-intro">方案定義傭金模式、結算週期與代理可分配點數；儲存後可在代理詳情套用。</p><NForm label-placement="top"><NFormItem label="方案名稱"><NInput v-model:value="planName" placeholder="例如：台灣返佣標準方案" /></NFormItem><div class="form-two-col"><NFormItem label="傭金模式"><NSelect v-model:value="planModel" :disabled="currentRole !== '運營商'" :options="currentRole === '運營商' ? [{label:'CPA',value:'CPA'},{label:'佔成',value:'佔成'},{label:'返佣',value:'返佣'}] : [{label: `${lineModel}（沿用上級）`, value: lineModel}]" /></NFormItem><NFormItem label="結算週期"><NSelect v-model:value="planCycle" :disabled="currentRole !== '運營商'" :options="[{label:'即時',value:'即時'},{label:'每日',value:'每日'},{label:'每週',value:'每週'},{label:'每月',value:'每月'}]" /></NFormItem></div><NFormItem label="可分配點數"><NInputNumber v-model:value="planRate" :min="0" :max="lineMaxRate" :step="0.5" style="width: 100%"><template #suffix>%</template></NInputNumber><p class="modal-help">{{ currentRole === '運營商' ? '運營商可依方案設定點數。' : `本代理線最多可設定 ${lineMaxRate}%；不得超過總代提供的額度。` }}</p></NFormItem><NFormItem label="方案說明"><NInput v-model:value="planDescription" type="textarea" :rows="3" placeholder="說明此方案的計算方式與下級點數規則" /></NFormItem></NForm><template #footer><NSpace justify="end"><NButton @click="showPlanEditor = false">取消</NButton><NButton type="primary" @click="savePlan">儲存方案</NButton></NSpace></template></NModal>
+      <NModal v-model:show="showPlanEditor" preset="card" :title="editingPlan ? '編輯傭金方案' : '新增傭金方案'" class="modal-card"><p class="modal-intro">每個方案都會產生一組推廣碼，推廣碼記錄註冊上級與方案默認點數，代理套用後依此方案計算傭金。</p><NForm label-placement="top"><NFormItem label="方案名稱"><NInput v-model:value="planName" placeholder="例如：台灣返佣標準方案" /></NFormItem><div class="form-two-col"><NFormItem label="方案推廣碼"><NInput v-model:value="planPromoCode" placeholder="例如：PLAN-TW-NEW1" /></NFormItem><NFormItem label="註冊上級"><NSelect v-model:value="planParentAccount" :disabled="currentRole !== '運營商'" :options="planParentOptions" /></NFormItem></div><div class="form-two-col"><NFormItem label="傭金模式"><NSelect v-model:value="planModel" :disabled="currentRole !== '運營商'" :options="currentRole === '運營商' ? [{label:'CPA',value:'CPA'},{label:'佔成',value:'佔成'},{label:'返佣',value:'返佣'}] : [{label: `${lineModel}（沿用上級）`, value: lineModel}]" /></NFormItem><NFormItem label="結算週期"><NSelect v-model:value="planCycle" :disabled="currentRole !== '運營商'" :options="[{label:'即時',value:'即時'},{label:'每日',value:'每日'},{label:'每週',value:'每週'},{label:'每月',value:'每月'}]" /></NFormItem></div><NFormItem label="默認可分配點數"><NInputNumber v-model:value="planRate" :min="0" :max="lineMaxRate" :step="0.5" style="width: 100%"><template #suffix>%</template></NInputNumber><p class="modal-help">{{ currentRole === '運營商' ? '此默認點數會隨方案推廣碼提供給下級代理。' : `本代理線最多可設定 ${lineMaxRate}%；不得超過上級提供的額度。` }}</p></NFormItem><NFormItem label="方案說明"><NInput v-model:value="planDescription" type="textarea" :rows="3" placeholder="說明此方案的計算方式與下級點數規則" /></NFormItem></NForm><template #footer><NSpace justify="end"><NButton @click="showPlanEditor = false">取消</NButton><NButton type="primary" @click="savePlan">儲存方案</NButton></NSpace></template></NModal>
       <NModal v-model:show="showWithdrawal" preset="card" title="申請提領傭金" class="modal-card"><p class="modal-intro">申請將進入平台審核；目前可提領餘額 TWD 28,460。</p><NForm label-placement="top"><NFormItem label="提領金額"><NInputNumber v-model:value="withdrawalAmount" :min="1000" :max="28460" style="width: 100%"><template #prefix>TWD</template></NInputNumber></NFormItem><NFormItem label="收款帳戶"><NSelect value="bank-001" :options="[{label:'台新銀行 · ****1234',value:'bank-001'}]" /></NFormItem></NForm><template #footer><NSpace justify="end"><NButton @click="showWithdrawal = false">取消</NButton><NButton type="primary" @click="submitWithdrawal">送出申請</NButton></NSpace></template></NModal>
       <NModal v-model:show="showBankCard" preset="card" title="管理傭金收款銀行卡" class="modal-card"><p class="modal-intro">銀行卡資料會經過驗證，僅可用於傭金提領。</p><NForm label-placement="top"><NFormItem label="銀行名稱"><NInput v-model:value="bankName" placeholder="輸入銀行名稱" /></NFormItem><NFormItem label="帳號"><NInput v-model:value="bankAccount" placeholder="輸入收款帳號" /></NFormItem><NFormItem label="戶名"><NInput v-model:value="bankHolder" placeholder="輸入戶名" /></NFormItem></NForm><template #footer><NSpace justify="end"><NButton @click="showBankCard = false">取消</NButton><NButton type="primary" @click="saveBankCard">儲存並送驗證</NButton></NSpace></template></NModal>
     </div>

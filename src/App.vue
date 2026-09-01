@@ -478,7 +478,7 @@ function exportMessage(label: string) {
 
 const playerColumns = computed(() => [
   { title: '玩家 ID', key: 'id', width: 110 },
-  { title: '玩家帳號', key: 'account', width: 150 },
+  { title: '玩家帳號', key: 'account', width: 150, render: (row: PlayerRow) => h(NButton, { text: true, type: 'primary', size: 'small', class: 'player-account-link', onClick: () => openPlayer(row) }, { default: () => row.account }) },
   { title: '顯示名稱', key: 'displayName', width: 140 },
   { title: '標籤', key: 'tags', width: 150, render: (row: PlayerRow) => h('div', { class: 'table-tags' }, row.tags.map((tag) => h(NTag, { size: 'small', round: true, type: tag === '風控關注' ? 'warning' : 'default' }, { default: () => tag }))) },
   { title: 'RTP', key: 'rtp', width: 80, render: (row: PlayerRow) => h('span', { class: row.rtp < 100 ? 'positive' : 'negative' }, `${row.rtp}%`) },
@@ -487,7 +487,7 @@ const playerColumns = computed(() => [
   { title: '在線狀態', key: 'isOnline', width: 100, render: (row: PlayerRow) => h(NBadge, { dot: true, type: row.isOnline ? 'success' : 'default' }, () => row.isOnline ? '在線' : '離線') },
   { title: '註冊時間', key: 'registerAt', width: 170 },
   { title: '操作', key: 'actions', width: canOperatePlayers.value ? 290 : 120, fixed: 'right' as const, render: (row: PlayerRow) => h('div', { class: 'table-actions' }, [
-    h(NButton, { size: 'small', secondary: true, type: 'primary', onClick: () => openPlayer(row) }, { default: () => '檢視詳情' }),
+    h(NButton, { size: 'small', secondary: true, type: 'primary', onClick: () => openPlayer(row) }, { default: () => '查看詳情' }),
     canOperatePlayers.value ? h(NButton, { size: 'small', quaternary: true, onClick: () => transferPlayer(row) }, { default: () => '轉線' }) : null,
     canOperatePlayers.value ? h(NButton, { size: 'small', quaternary: true, onClick: () => managePlayerStatus(row) }, { default: () => '狀態管理' }) : null,
     canOperatePlayers.value ? h(NButton, { size: 'small', quaternary: true, onClick: () => editPlayer(row) }, { default: () => '編輯資料' }) : null,
@@ -567,7 +567,7 @@ const playerColumns = computed(() => [
             <section v-else-if="activeKey === 'players'">
               <div class="section-head"><div><h1>玩家管理</h1><p class="muted">完整呈現運營後台玩家列表；代理相關路徑於玩家詳情的「代理關係」分頁查看。</p></div><NTag :type="canOperatePlayers ? 'warning' : 'info'" round>{{ canOperatePlayers ? '運營商可操作' : '代理唯讀' }}</NTag></div>
               <NCard class="filter-card"><div class="filter-row"><div class="scope-toggle"><button :class="{ active: scope === 'direct' }" @click="scope = 'direct'">直屬玩家</button><button :class="{ active: scope === 'all' }" @click="scope = 'all'">全部下級玩家</button></div><NInput v-model:value="search" clearable placeholder="搜尋玩家帳號或路徑" class="search-input"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput></div></NCard>
-              <NCard :bordered="false" class="table-card"><NDataTable :columns="playerColumns" :data="filteredPlayers" :pagination="{ pageSize: 8 }" /><div class="privacy-note">權限提示：總代理與一般代理只能查看玩家資料；轉線、狀態管理、編輯資料僅由運營商執行。隱私欄位依運營後台規則遮罩。</div></NCard>
+              <div class="table-section-label"><strong>資料顯示欄位</strong><span>點擊玩家帳號或右側「查看詳情」即可開啟完整玩家詳情</span></div><NCard :bordered="false" class="table-card"><NDataTable :columns="playerColumns" :data="filteredPlayers" :pagination="{ pageSize: 8 }" /><div class="privacy-note">權限提示：總代理與一般代理只能查看玩家資料；轉線、狀態管理、編輯資料僅由運營商執行。隱私欄位依運營後台規則遮罩。</div></NCard>
             </section>
 
             <section v-else-if="activeKey === 'codes'">

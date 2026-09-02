@@ -141,6 +141,12 @@ const newAgentRole = ref<Role>('一般代理')
 const showAgentDetail = ref(false)
 const showAgentDetailModal = ref(false)
 const selectedAgent = ref<AgentRow | null>(null)
+const showDeactivateAgentConfirm = ref(false)
+const pendingDeactivateAgent = ref<AgentRow | null>(null)
+const showAgentEdit = ref(false)
+const agentNameDraft = ref('')
+const agentPhoneDraft = ref('')
+const agentEmailDraft = ref('')
 const detailTab = ref<'basic' | 'wallet' | 'auth' | 'relationship' | 'commission' | 'logs'>('basic')
 const showTwoFactorAdmin = ref(false)
 const twoFactorAdminStep = ref<'overview' | 'view' | 'reset'>('overview')
@@ -183,6 +189,10 @@ const bankName = ref('台新銀行')
 const bankAccount = ref('123456789012')
 const bankHolder = ref('Klaus Lin')
 const withdrawalAmount = ref<number | null>(null)
+const withdrawalMin = ref(1000)
+const withdrawalDailyLimit = ref(3)
+const withdrawalTodayCount = ref(1)
+const withdrawableBalance = ref(28460)
 const selectedCycle = ref('每週')
 const notice = ref<{ type: 'success' | 'warning'; title: string; content: string } | null>(null)
 
@@ -254,14 +264,16 @@ const canCreateAgent = computed(() => currentRole.value !== '運營商' || curre
 const createTitle = computed(() => currentRole.value === '運營商' ? '開設總代理' : '開設下級代理')
 const pageTitle = computed(() => navGroups.value.flatMap((group) => group.items).find((item) => item.key === activeKey.value)?.label ?? '營運概覽')
 const filteredAgents = computed(() => agentRows.value.filter((row) => {
-  const inScope = scope.value === 'all' || row.level === '一級代理'
+  const directAgent = currentRole.value === '運營商' ? row.level === '總代理' : row.path === identity.value.account || row.path === `${identity.value.account} > ${row.account}`
+  const inScope = canViewAgent(row) && (scope.value === 'all' || directAgent)
   const inLevel = !agentLevelFilter.value || row.level === agentLevelFilter.value
   const inStatus = !agentStatusFilter.value || row.status === agentStatusFilter.value
   const inCommission = !agentCommissionFilter.value || row.model === agentCommissionFilter.value
   return inScope && inLevel && inStatus && inCommission && `${row.account}${row.path}`.toLowerCase().includes(search.value.toLowerCase())
 }))
 const filteredPlayers = computed(() => playerRows.value.filter((row) => {
-  const inScope = scope.value === 'all' || row.agentLevel === '一級玩家'
+  const visibleToRole = currentRole.value === '運營商' || row.path.startsWith(`${identity.value.account} >`)
+  const inScope = visibleToRole && (scope.value === 'all' || (currentRole.value === '運營商' ? row.path.split(' > ').length === 2 : row.path.split(' > ').length <= 3))
   return inScope && `${row.id}${row.account}${row.displayName}${row.path}`.toLowerCase().includes(search.value.toLowerCase())
 }))
 const planOptions = computed(() => commissionPlans.value.filter((plan) => plan.status === '啟用' && (currentRole.value === '運營商' || plan.model === lineModel.value)).map((plan) => ({ label: `${plan.name}（${plan.promoCode}／${plan.model}／${plan.cycle}）`, value: plan.id })))
@@ -273,6 +285,7 @@ const availablePlanOptions = computed(() => visiblePlans.value.filter((plan) => 
 const lineMaxRate = computed(() => currentRole.value === '運營商' ? 100 : (agentRows.value.find((row) => row.account === identity.value.account)?.point ?? 0))
 const canManagePlans = computed(() => true)
 const canOperatePlayers = computed(() => currentRole.value === '運營商')
+const withdrawalEligible = computed(() => withdrawableBalance.value >= withdrawalMin.value && withdrawalTodayCount.value < withdrawalDailyLimit.value)
 const planParentOptions = computed(() => [
   { label: 'agent_taipei（總代理）', value: 'agent_taipei（總代理）' },
   { label: 'north_team（一級代理）', value: 'north_team（一級代理）' },
@@ -285,6 +298,16 @@ const playerStatusOptions = [
   { label: '暫停', value: '暫停' },
 ]
 const playerTransferOptions = computed(() => agentRows.value.filter((row) => row.status === '啟用').map((row) => ({ label: `${row.account} · ${row.path}`, value: row.path })))
+
+function canViewAgent(row: AgentRow) {
+  if (currentRole.value === '運營商') return true
+  return row.account === identity.value.account || row.path.startsWith(`${identity.value.account} >`)
+}
+
+function canManageAgent(row: AgentRow) {
+  if (currentRole.value === '運營商') return true
+  return currentRole.value === '總代理' && row.path.startsWith(`${identity.value.account} >`)
+}
 
 function login() {
   if (!loginAccount.value || !loginPassword.value) {
@@ -321,9 +344,29 @@ function selectNav(key: string) {
 }
 
 function deactivateAgent(row: AgentRow) {
+  if (!canManageAgent(row)) {
+    showNotice('warning', '無操作權限', '只有運營商與總代可以停用或啟用代理。')
+    return
+  }
+  if (row.status === '啟用') {
+    pendingDeactivateAgent.value = row
+    showDeactivateAgentConfirm.value = true
+    return
+  }
+  applyAgentStatus(row)
+}
+
+function applyAgentStatus(row: AgentRow) {
   row.status = row.status === '啟用' ? '停用' : '啟用'
   logs.value.unshift({ time: '2026-08-31 10:30:00', type: row.status === '啟用' ? '啟用代理' : '停用代理', actor: loginAccount.value, detail: `${row.account} 狀態變更為${row.status}`, ip: '10.20.8.15' })
   showNotice('success', '狀態已更新', `${row.account} 現在為${row.status}`)
+}
+
+function confirmDeactivateAgent() {
+  if (!pendingDeactivateAgent.value) return
+  applyAgentStatus(pendingDeactivateAgent.value)
+  pendingDeactivateAgent.value = null
+  showDeactivateAgentConfirm.value = false
 }
 
 function createAgent() {
@@ -355,8 +398,16 @@ function createAgent() {
 }
 
 function submitWithdrawal() {
-  if (!withdrawalAmount.value || withdrawalAmount.value < 1000) {
-    showNotice('warning', '未符合提領條件', '最低提領金額為 TWD 1,000。')
+  if (!withdrawalEligible.value) {
+    showNotice('warning', '目前不可提領', `可提領條件：餘額至少 TWD ${withdrawalMin.value.toLocaleString()}，且每日未達 ${withdrawalDailyLimit.value} 次上限。`)
+    return
+  }
+  if (!withdrawalAmount.value || withdrawalAmount.value < withdrawalMin.value) {
+    showNotice('warning', '未符合提領條件', `最低提領金額為 TWD ${withdrawalMin.value.toLocaleString()}。`)
+    return
+  }
+  if (withdrawalAmount.value > withdrawableBalance.value) {
+    showNotice('warning', '提領金額超過餘額', `目前最多可提領 TWD ${withdrawableBalance.value.toLocaleString()}。`)
     return
   }
   showWithdrawal.value = false
@@ -394,6 +445,31 @@ function openAgent(row: AgentRow) {
   showAgentDetail.value = true
 }
 
+function editAgent(row: AgentRow) {
+  if (!canManageAgent(row)) {
+    showNotice('warning', '無編輯權限', '只有運營商或總代可編輯自己權限範圍內的代理基本資料。')
+    return
+  }
+  selectedAgent.value = row
+  agentNameDraft.value = row.displayName
+  agentPhoneDraft.value = row.phone ?? ''
+  agentEmailDraft.value = row.email ?? ''
+  showAgentEdit.value = true
+}
+
+function saveAgentProfile() {
+  if (!selectedAgent.value || !agentNameDraft.value.trim()) {
+    showNotice('warning', '資料未完成', '代理名稱不可為空白。')
+    return
+  }
+  selectedAgent.value.displayName = agentNameDraft.value.trim()
+  selectedAgent.value.phone = agentPhoneDraft.value.trim()
+  selectedAgent.value.email = agentEmailDraft.value.trim()
+  logs.value.unshift({ time: '2026-09-02 11:12:00', type: '編輯代理資料', actor: loginAccount.value, detail: `${selectedAgent.value.account} 基本資料已更新`, ip: '10.20.8.15' })
+  showAgentEdit.value = false
+  showNotice('success', '代理資料已更新', `${selectedAgent.value.account} 的基本資料已儲存。`)
+}
+
 function openTwoFactorAdmin(row: AgentRow) {
   if (!canManageTwoFactor(row)) {
     showNotice('warning', '無管理權限', 'Google Auth 管理僅限運營商與總代操作；總代只能管理自己下線的代理。')
@@ -402,6 +478,12 @@ function openTwoFactorAdmin(row: AgentRow) {
   selectedTwoFactorAgent.value = row
   twoFactorAdminStep.value = 'overview'
   showTwoFactorAdmin.value = true
+}
+
+function openTwoFactorAdminPage(row: AgentRow) {
+  selectedTwoFactorAgent.value = row
+  twoFactorAdminStep.value = 'overview'
+  detailTab.value = 'auth'
 }
 
 function canManageTwoFactor(row: AgentRow) {
@@ -712,13 +794,13 @@ const playerColumns = computed(() => [
               <NCard title="2FA 全域設定" class="security-card agent-security-card"><div class="security-setting"><div><strong>新代理預設啟用 Google Auth</strong><p class="modal-help">代理建立後，預設決定是否需要在首次登入時綁定 Google Auth。此設定只套用新代理，不追溯修改既有代理。</p></div><NSwitch :value="twoFactorGlobalEnabled" :disabled="currentRole !== '運營商'" @update:value="toggleTwoFactorGlobal" /></div><p class="modal-help">只有運營商可以修改；總代與一般代理僅能查看設定。</p></NCard>
               <div class="agent-focus-grid"><NCard class="focus-card"><div class="focus-icon">A</div><div><span>目前登入角色</span><strong>{{ identity.account }}</strong><small>{{ identity.label }} · {{ identity.currency }} · 可查看{{ currentRole === '運營商' ? '全平台' : '自身代理線' }}</small></div></NCard><NCard class="focus-card"><div class="focus-icon blue">%</div><div><span>傭金方案</span><strong>兩種模式可配置</strong><small>佔成／返佣分開管理，代理僅套用方案。</small></div></NCard><NCard class="focus-card"><div class="focus-icon green">↳</div><div><span>代理線狀態</span><strong>{{ currentRole === '運營商' ? '12 條 · 多幣別' : '3 條 · 幣別一致' }}</strong><small>同一條代理線內代理與玩家必須使用相同幣別。</small></div></NCard></div>
               <div class="table-section-label"><strong>篩選欄位</strong><span>設定查看範圍、代理層級、傭金模式與狀態</span></div><NCard class="filter-card"><div class="filter-row"><div class="scope-toggle"><button :class="{ active: scope === 'direct' }" @click="scope = 'direct'">只看直屬</button><button :class="{ active: scope === 'all' }" @click="scope = 'all'">查看全部下級</button></div><NSelect v-model:value="agentLevelFilter" clearable placeholder="代理層級" :options="[{label:'總代理',value:'總代理'},{label:'一級代理',value:'一級代理'},{label:'二級代理',value:'二級代理'}]" style="width: 140px" /><NSelect v-model:value="agentCommissionFilter" clearable placeholder="傭金模式" :options="[{label:'佔成',value:'佔成'},{label:'返佣',value:'返佣'}]" style="width: 130px" /><NSelect v-model:value="agentStatusFilter" clearable placeholder="狀態" :options="[{label:'啟用',value:'啟用'},{label:'停用',value:'停用'}]" style="width: 120px" /><NInput v-model:value="search" clearable placeholder="搜尋代理帳號" class="search-input"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput></div></NCard>
-              <div class="table-section-label"><strong>資料顯示欄位</strong><span>代理帳號與層級分開顯示；傭金方案及模式摘要可直接核對</span></div><NCard :bordered="false" class="table-card"><div class="agent-table-wrap"><div class="agent-table"><div class="agent-table-head"><span>代理帳號</span><span>層級</span><span>幣別</span><span>傭金模式</span><span>結算週期</span><span>下級數</span><span>傭金錢包餘額</span><span>狀態</span><span>傭金方案</span><span>模式設定</span><span>操作</span></div><div v-for="row in filteredAgents" :key="row.id" class="agent-table-row"><button class="account-link" @click="openAgent(row)">{{ row.account }}</button><span>{{ row.level }}</span><span>{{ row.currency }}</span><span>{{ row.model ?? '沿用上級' }}</span><span>{{ row.cycle ?? '沿用上級' }}</span><span>{{ row.children }}</span><strong class="wallet-value">{{ row.currency }} {{ row.walletBalance.toLocaleString() }}</strong><NTag size="small" :type="row.status === '啟用' ? 'success' : 'error'" round>{{ row.status }}</NTag><div><strong>{{ planForAgent(row)?.name ?? '未套用' }}</strong><small class="mode-summary">{{ agentPlanSummary(row) }}</small></div><span class="mode-summary">{{ row.model === '佔成' ? '輸贏－行政成本' : row.model === '返佣' ? '有效投注額' : '-' }}</span><div class="table-actions"><NButton quaternary size="small" @click="openAgent(row)">查看詳情</NButton><NButton quaternary size="small" @click="deactivateAgent(row)">{{ row.status === '啟用' ? '停用' : '啟用' }}</NButton></div></div></div></div><div class="table-hint">傭金錢包餘額為目前可提領金額；方案欄位顯示代理目前套用的推廣碼方案，模式設定摘要可於「傭金方案」查看完整規則。</div></NCard>
+              <div class="table-section-label"><strong>資料顯示欄位</strong><span>代理帳號與層級分開顯示；傭金方案及模式摘要可直接核對</span></div><NCard :bordered="false" class="table-card"><div class="agent-table-wrap"><div class="agent-table"><div class="agent-table-head"><span>代理帳號</span><span>層級</span><span>幣別</span><span>傭金模式</span><span>結算週期</span><span>下級數</span><span>傭金錢包餘額</span><span>狀態</span><span>傭金方案</span><span>模式設定</span><span>操作</span></div><div v-for="row in filteredAgents" :key="row.id" class="agent-table-row"><button class="account-link" @click="openAgent(row)">{{ row.account }}</button><span>{{ row.level }}</span><span>{{ row.currency }}</span><NTag size="small" :type="row.model === '佔成' ? 'warning' : 'success'" round>{{ row.model ?? '沿用上級' }}</NTag><span>{{ row.cycle ?? '沿用上級' }}</span><span>{{ row.children }}</span><strong class="wallet-value">{{ row.currency }} {{ row.walletBalance.toLocaleString() }}</strong><NTag size="small" :type="row.status === '啟用' ? 'success' : 'error'" round>{{ row.status }}</NTag><div><strong>{{ planForAgent(row)?.name ?? '未套用' }}</strong><small class="mode-summary">{{ agentPlanSummary(row) }}</small></div><span class="mode-summary">{{ row.model === '佔成' ? '輸贏－行政成本' : row.model === '返佣' ? '有效投注額' : '-' }}</span><div class="table-actions"><NButton quaternary size="small" @click="openAgent(row)">查看詳情</NButton><NButton quaternary size="small" @click="deactivateAgent(row)">{{ row.status === '啟用' ? '停用' : '啟用' }}</NButton></div></div></div></div><div class="table-hint">傭金錢包餘額為目前可提領金額；方案欄位顯示代理目前套用的推廣碼方案，模式設定摘要可於「傭金方案」查看完整規則。</div></NCard>
               </template>
               <template v-else-if="selectedAgent">
-                  <div class="detail-layout"><aside class="profile-panel"><div class="profile-panel-head"><h3>基本資料</h3><NButton size="small" :type="selectedAgent.status === '啟用' ? 'warning' : 'primary'" secondary @click="deactivateAgent(selectedAgent)">{{ selectedAgent.status === '啟用' ? '停用代理' : '啟用代理' }}</NButton></div><div class="profile-avatar">{{ selectedAgent.displayName?.slice(0, 1) || selectedAgent.account.slice(0, 1).toUpperCase() }}</div><h2>{{ selectedAgent.displayName || selectedAgent.account }}</h2><p class="profile-id">UID：{{ selectedAgent.uid || selectedAgent.id }}</p><div class="profile-status"><NTag :type="selectedAgent.status === '啟用' ? 'success' : 'error'" size="small" round>{{ selectedAgent.status }}</NTag><NTag type="info" size="small" round>{{ selectedAgent.level }}</NTag></div><div class="profile-fields"><div><span>登入帳號</span><strong>{{ selectedAgent.account }}</strong></div><div><span>登入密碼</span><strong>••••••••</strong></div><div><span>帳號類型</span><strong>{{ selectedAgent.level }}</strong></div><div><span>代理 UID</span><strong>{{ selectedAgent.uid || selectedAgent.id }}</strong></div><div><span>真實姓名</span><strong>{{ selectedAgent.displayName || '未填寫' }}</strong></div><div><span>手機號碼</span><strong>{{ maskPhone(selectedAgent.phone) }}</strong></div><div><span>Email</span><strong>{{ maskEmail(selectedAgent.email) }}</strong></div><div><span>代理傭金錢包餘額</span><strong class="positive">{{ selectedAgent.currency }} {{ selectedAgent.walletBalance.toLocaleString() }}</strong></div><div><span>幣別</span><strong>{{ selectedAgent.currency }}</strong></div><div><span>傭金模式</span><strong>{{ selectedAgent.model }}</strong></div><div><span>目前狀態</span><strong>{{ selectedAgent.status }}</strong></div></div></aside><div class="detail-workspace"><div class="detail-page-head"><div><button class="back-link" @click="showAgentDetail = false">← 返回代理管理</button><h1>代理詳情 · {{ selectedAgent.account }}</h1><p class="muted">查看代理帳號、代理線、傭金錢包與安全設定。</p></div><NTag type="info" round>{{ selectedAgent.level }}</NTag></div>
-                 <div class="detail-tabs"><button :class="{ active: detailTab === 'wallet' }" @click="detailTab = 'wallet'">即時資料</button><button :class="{ active: detailTab === 'auth' }" @click="detailTab = 'auth'">Google Auth</button><button :class="{ active: detailTab === 'relationship' }" @click="detailTab = 'relationship'">代理關係</button><button :class="{ active: detailTab === 'commission' }" @click="detailTab = 'commission'">傭金設定</button><button :class="{ active: detailTab === 'logs' }" @click="detailTab = 'logs'">操作紀錄</button></div>
+                  <div class="detail-layout"><aside class="profile-panel"><div class="profile-panel-head"><h3>基本資料</h3><NSpace><NButton v-if="canManageAgent(selectedAgent)" size="small" secondary @click="editAgent(selectedAgent)">編輯資料</NButton><NButton v-if="canManageAgent(selectedAgent)" size="small" :type="selectedAgent.status === '啟用' ? 'warning' : 'primary'" secondary @click="deactivateAgent(selectedAgent)">{{ selectedAgent.status === '啟用' ? '停用代理' : '啟用代理' }}</NButton></NSpace></div><div class="profile-avatar">{{ selectedAgent.displayName?.slice(0, 1) || selectedAgent.account.slice(0, 1).toUpperCase() }}</div><h2>{{ selectedAgent.displayName || selectedAgent.account }}</h2><p class="profile-id">UID：{{ selectedAgent.uid || selectedAgent.id }}</p><div class="profile-status"><NTag :type="selectedAgent.status === '啟用' ? 'success' : 'error'" size="small" round>{{ selectedAgent.status }}</NTag><NTag type="info" size="small" round>{{ selectedAgent.level }}</NTag></div><div class="profile-fields"><div><span>登入帳號</span><strong>{{ selectedAgent.account }}</strong></div><div><span>登入密碼</span><strong>••••••••</strong></div><div><span>帳號類型</span><strong>{{ selectedAgent.level }}</strong></div><div><span>代理 UID</span><strong>{{ selectedAgent.uid || selectedAgent.id }}</strong></div><div><span>真實姓名</span><strong>{{ selectedAgent.displayName || '未填寫' }}</strong></div><div><span>手機號碼</span><strong>{{ maskPhone(selectedAgent.phone) }}</strong></div><div><span>Email</span><strong>{{ maskEmail(selectedAgent.email) }}</strong></div><div><span>代理傭金錢包餘額</span><strong class="positive">{{ selectedAgent.currency }} {{ selectedAgent.walletBalance.toLocaleString() }}</strong></div><div><span>幣別</span><strong>{{ selectedAgent.currency }}</strong></div><div><span>傭金模式</span><strong>{{ selectedAgent.model }}</strong></div><div><span>目前狀態</span><strong>{{ selectedAgent.status }}</strong></div></div></aside><div class="detail-workspace"><div class="detail-page-head"><div><button class="back-link" @click="showAgentDetail = false">← 返回代理管理</button><h1>代理詳情 · {{ selectedAgent.account }}</h1><p class="muted">查看代理帳號、代理線、傭金錢包與安全設定。</p></div><NTag type="info" round>{{ selectedAgent.level }}</NTag></div>
+                 <div class="detail-tabs"><button :class="{ active: detailTab === 'wallet' }" @click="detailTab = 'wallet'">即時資料</button><button :class="{ active: detailTab === 'auth' }" @click="openTwoFactorAdminPage(selectedAgent)">Google Auth</button><button :class="{ active: detailTab === 'relationship' }" @click="detailTab = 'relationship'">代理關係</button><button :class="{ active: detailTab === 'commission' }" @click="detailTab = 'commission'">傭金設定</button><button :class="{ active: detailTab === 'logs' }" @click="detailTab = 'logs'">操作紀錄</button></div>
                 <div v-if="detailTab === 'basic'" class="agent-detail-grid detail-page-card"><div><span>登入帳號</span><strong>{{ selectedAgent.account }}</strong></div><div><span>代理傭金錢包餘額</span><strong class="positive">{{ selectedAgent.currency }} {{ selectedAgent.walletBalance.toLocaleString() }}</strong></div><div><span>登入密碼</span><strong>••••••••</strong><p class="modal-help">只有直屬上級、運營商與總代可更改。</p></div><div><span>帳號類型</span><strong>{{ selectedAgent.level }}</strong></div><div><span>代理 UID（系統生成）</span><strong>{{ selectedAgent.uid || selectedAgent.id }}</strong></div><div><span>真實姓名</span><strong>{{ selectedAgent.displayName || '未填寫' }}</strong></div><div><span>手機號碼</span><strong>{{ maskPhone(selectedAgent.phone) }}</strong></div><div><span>Email</span><strong>{{ maskEmail(selectedAgent.email) }}</strong></div><div><span>幣別</span><strong>{{ selectedAgent.currency }}</strong></div><div><span>目前狀態</span><NTag :type="selectedAgent.status === '啟用' ? 'success' : 'error'" round>{{ selectedAgent.status }}</NTag></div></div>
-                <div v-else-if="detailTab === 'auth'" class="auth-page-card"><div class="auth-page-heading"><div class="auth-page-icon">盾</div><div><h3>Google Auth 雙重驗證</h3><p>管理此代理的個別 2FA 要求與 Google Auth 綁定狀態。</p></div><NTag :type="selectedAgent.twoFactor === '已啟用' ? 'success' : 'warning'" round>{{ selectedAgent.twoFactor || '未啟用' }}</NTag></div><div class="auth-page-grid"><div><span>個別 2FA 預設</span><strong>{{ selectedAgent.twoFactorRequired === false ? '停用' : '啟用' }}</strong></div><div><span>綁定時間</span><strong>{{ selectedAgent.twoFactorBoundAt || '尚未綁定' }}</strong></div><div><span>可操作角色</span><strong>運營商；總代（自己下線）</strong></div></div><div class="auth-page-actions"><NSwitch :value="selectedAgent.twoFactorRequired !== false" :disabled="!canManageTwoFactor(selectedAgent)" @update:value="toggleAgentTwoFactor" /><span>{{ selectedAgent.twoFactorRequired === false ? '此代理不要求 2FA' : '此代理要求 2FA' }}</span><NButton v-if="canManageTwoFactor(selectedAgent)" type="primary" @click="openTwoFactorAdmin(selectedAgent)">開啟 Google Auth 管理</NButton></div><p class="modal-help">停用個別要求不會刪除既有綁定；重設後代理下次登入會重新進入綁定流程。</p></div>
+                 <div v-else-if="detailTab === 'auth'" class="auth-page-card"><div class="auth-page-heading"><div><h3>Google Auth 雙重驗證</h3><p>在本分頁直接管理此代理的 2FA 要求、查看目前 QR Code，或重設並產生重新綁定 QR Code。</p></div><NTag :type="selectedAgent.twoFactor === '已啟用' ? 'success' : 'warning'" round>{{ selectedAgent.twoFactor || '未啟用' }}</NTag></div><template v-if="twoFactorAdminStep === 'overview'"><div class="auth-page-grid"><div><span>個別 2FA 要求</span><strong>{{ selectedAgent.twoFactorRequired === false ? '停用' : '啟用' }}</strong></div><div><span>綁定時間</span><strong>{{ selectedAgent.twoFactorBoundAt || '尚未綁定' }}</strong></div><div><span>可操作角色</span><strong>運營商；總代（自己下線）</strong></div></div><div class="auth-page-actions"><NSwitch :value="selectedAgent.twoFactorRequired !== false" :disabled="!canManageTwoFactor(selectedAgent)" @update:value="toggleAgentTwoFactor" /><span>{{ selectedAgent.twoFactorRequired === false ? '此代理不要求 2FA' : '此代理要求 2FA' }}</span><NButton v-if="canManageTwoFactor(selectedAgent) && selectedAgent.twoFactor === '已啟用'" secondary @click="viewTwoFactorQr">查看目前 QR Code</NButton><NButton v-if="canManageTwoFactor(selectedAgent)" type="warning" @click="prepareTwoFactorReset">重設並產生重新綁定 QR Code</NButton></div><p class="modal-help">停用個別要求不會刪除既有綁定；重設後代理下次登入會重新進入綁定流程。</p></template><div v-else class="auth-admin-panel auth-inline-admin"><div class="auth-admin-heading"><div><NButton text size="small" @click="twoFactorAdminStep = 'overview'">← 返回 Google Auth 管理</NButton><span>{{ twoFactorAdminStep === 'reset' ? '重新綁定帳號' : '查看 Google Auth QR Code' }}</span><strong>{{ selectedAgent.account }}</strong></div><NTag :type="twoFactorAdminStep === 'reset' ? 'warning' : 'success'" round>{{ twoFactorAdminStep === 'reset' ? '待重新綁定' : '目前已綁定' }}</NTag></div><div class="auth-qr-layout"><div class="auth-qr" aria-label="Google Auth QR Code 示意"><span>QR</span></div><div><strong>{{ twoFactorAdminStep === 'reset' ? '請交給代理重新掃描' : '目前綁定 QR Code' }}</strong><ol><li>開啟 Google Authenticator。</li><li>掃描左側 QR Code，或手動輸入密鑰。</li><li>確認驗證碼後完成綁定。</li></ol><p class="auth-secret">手動密鑰：JBSW Y3DP EHPK 3PXP</p></div></div><p class="modal-help">此為原型示意；正式版 QR Code 與密鑰應受權限控管，查看與重設行為需寫入操作日誌。</p><NButton v-if="twoFactorAdminStep === 'reset'" type="primary" @click="completeTwoFactorReset">完成重設</NButton></div></div>
                 <div v-else-if="detailTab === 'wallet'" class="agent-detail-grid detail-page-card"><div><span>代理傭金錢包餘額</span><strong class="positive">{{ selectedAgent.currency }} {{ selectedAgent.walletBalance.toLocaleString() }}</strong></div><div><span>待結算傭金</span><strong>{{ selectedAgent.currency }} 12,680</strong></div><div><span>本期產生傭金</span><strong>{{ selectedAgent.currency }} 28,460</strong></div><div><span>可提領狀態</span><NTag type="success" round>可提領</NTag></div><div class="full"><span>錢包權限</span><p class="modal-help">代理傭金錢包僅可查看與申請提領；資金帳變不可轉帳、加扣款，提領需由運營商審核。</p></div></div>
                 <div v-else-if="detailTab === 'relationship'" class="agent-detail-grid detail-page-card"><div class="full"><span>完整樹狀路徑</span><strong>{{ selectedAgent.path }}</strong></div><div><span>代理層級</span><strong>{{ selectedAgent.level }}</strong></div><div><span>直屬下級數</span><strong>{{ selectedAgent.children }} 位</strong></div><div class="full"><span>關係說明</span><p class="modal-help">此代理只能隸屬一條代理線；轉移代理線時，生效前後訂單依原／新代理線歸屬，不回溯重算歷史傭金。</p></div></div>
                 <div v-else-if="detailTab === 'commission'" class="agent-detail-grid detail-page-card"><div class="full"><span>套用傭金方案</span><NSelect v-model:value="draftPlanId" :options="planOptions" /></div><div><span>方案推廣碼</span><strong class="code-text">{{ selectedPlan.promoCode }}</strong></div><div><span>傭金模式</span><strong>{{ selectedPlan.model }}</strong></div><div><span>結算週期</span><strong>{{ selectedPlan.cycle }}</strong></div><div><span>默認可分配點數</span><strong>{{ selectedPlan.allocationRate }}%</strong></div><div class="full"><span>方案規則</span><p class="modal-help">{{ selectedPlan.description }} 下級代理可設定的點數不得超過上級可分配額度。</p></div><div class="full"><NButton type="primary" @click="saveAgentPlan">儲存傭金方案</NButton></div></div>
@@ -757,19 +839,19 @@ const playerColumns = computed(() => [
 
             <section v-else-if="activeKey === 'commissionPlans'">
               <div class="section-head"><div><h1>傭金方案</h1><p class="muted">獨立管理佔成、返佣兩種傭金模式；每個方案綁定一組推廣碼，代理建立或調整時套用方案。</p><p class="line-rule">{{ currentRole === '運營商' ? '運營商可建立與編輯兩種模式方案。' : `目前代理線由總代設定為${lineModel}，本線只能建立或套用${lineModel}方案，點數上限為${lineMaxRate}%。` }}</p></div><NButton v-if="canManagePlans" type="primary" @click="openPlanEditor()">＋ 新增傭金方案</NButton></div>
-              <div class="plan-mode-grid"><NCard v-for="mode in [{name:'佔成',desc:'依玩家總輸贏扣除行政成本後按比例分配，支援負數規則。'},{name:'返佣',desc:'依有效投注額按返佣比例計算，可選階梯式比例。'}]" :key="mode.name" class="plan-mode-card"><strong>{{ mode.name }}</strong><span>{{ mode.desc }}</span></NCard></div>
-              <div class="table-section-label"><strong>方案資料</strong><span>推廣碼代表註冊歸屬上級；方案默認點數即下級可分配的最高額度</span></div><NCard :bordered="false" class="table-card"><div class="plan-table-wrap"><div class="plan-table"><div class="plan-table-head"><span>方案名稱</span><span>方案推廣碼</span><span>註冊上級</span><span>傭金模式</span><span>結算週期</span><span>默認點數</span><span>套用代理</span><span>狀態</span><span>操作</span></div><div v-for="plan in visiblePlans" :key="plan.id" class="plan-table-row"><div><strong>{{ plan.name }}</strong><small>{{ plan.description }}</small></div><span class="code-text">{{ plan.promoCode }}</span><span>{{ plan.parentAccount }}</span><div><strong>{{ plan.model }}</strong><small class="mode-summary">{{ planConfigSummary(plan) }}</small></div><span>{{ plan.cycle }}</span><span>{{ plan.allocationRate }}%</span><span>{{ plan.assignedCount }} 位</span><NTag size="small" :type="plan.status === '啟用' ? 'success' : 'error'" round>{{ plan.status }}</NTag><div class="table-actions"><NButton v-if="canManagePlans" quaternary size="small" @click="openPlanEditor(plan)">編輯</NButton><NButton quaternary size="small" @click="copyReferral(plan.promoCode, '方案推廣碼')">複製碼</NButton><NButton v-if="canManagePlans" quaternary size="small" @click="togglePlan(plan)">{{ plan.status === '啟用' ? '停用' : '啟用' }}</NButton><span v-if="!canManagePlans" class="muted">僅可套用</span></div></div></div></div><div class="table-hint">每個方案推廣碼都固定記錄註冊上級、傭金模式、結算週期與默認點數；同一條代理線只能使用一種傭金模式，下級方案不得超過上級額度。</div></NCard>
+               <div class="plan-mode-grid"><NCard v-for="mode in [{name:'佔成',desc:'依玩家總輸贏扣除行政成本後按比例分配，支援負數規則。'},{name:'返佣',desc:'依有效投注額按返佣比例計算，可選階梯式比例。'}]" :key="mode.name" class="plan-mode-card"><NTag :type="mode.name === '佔成' ? 'warning' : 'success'" round>{{ mode.name }}</NTag><span>{{ mode.desc }}</span></NCard></div>
+               <div class="table-section-label"><strong>方案資料</strong><span>推廣碼代表註冊歸屬上級；方案默認點數即下級可分配的最高額度</span></div><NCard :bordered="false" class="table-card"><div class="plan-table-wrap"><div class="plan-table"><div class="plan-table-head"><span>方案名稱</span><span>方案推廣碼</span><span>註冊上級</span><span>傭金模式</span><span>結算週期</span><span>默認點數</span><span>套用代理</span><span>狀態</span><span>操作</span></div><div v-for="plan in visiblePlans" :key="plan.id" class="plan-table-row"><div><strong>{{ plan.name }}</strong><small>{{ plan.description }}</small></div><span class="code-text">{{ plan.promoCode }}</span><span>{{ plan.parentAccount }}</span><div><NTag size="small" :type="plan.model === '佔成' ? 'warning' : 'success'" round>{{ plan.model }}</NTag><small class="mode-summary">{{ planConfigSummary(plan) }}</small></div><span>{{ plan.cycle }}</span><span>{{ plan.allocationRate }}%</span><span>{{ plan.assignedCount }} 位</span><NTag size="small" :type="plan.status === '啟用' ? 'success' : 'error'" round>{{ plan.status }}</NTag><div class="table-actions"><NButton v-if="canManagePlans" quaternary size="small" @click="openPlanEditor(plan)">編輯</NButton><NButton quaternary size="small" @click="copyReferral(plan.promoCode, '方案推廣碼')">複製碼</NButton><NButton v-if="canManagePlans" quaternary size="small" @click="togglePlan(plan)">{{ plan.status === '啟用' ? '停用' : '啟用' }}</NButton><span v-if="!canManagePlans" class="muted">僅可套用</span></div></div></div></div><div class="table-hint">每個方案推廣碼都固定記錄註冊上級、傭金模式、結算週期與默認點數；同一條代理線只能使用一種傭金模式，下級方案不得超過上級額度。</div></NCard>
             </section>
 
             <section v-else-if="activeKey === 'commission'">
               <div class="section-head"><div><h1>傭金中心</h1><p class="muted">查看目前代理線的傭金模式、結算週期與餘額。</p></div><NTag type="info" round>本期：2026/08/25–08/31</NTag></div>
-              <div class="commission-cards"><NCard><div class="mini-label">目前模式</div><div class="big-value">返佣 <NTag type="info" size="small">總代設定</NTag></div><p class="muted">有效投注額按方案比例計算</p></NCard><NCard><div class="mini-label">結算週期</div><div class="big-value">{{ selectedCycle }}</div><p class="muted">變更於下一個結算週期生效</p></NCard><NCard><div class="mini-label">本期可提領</div><div class="big-value positive">TWD 28,460</div><p class="muted">已扣除追回與手續費</p></NCard></div>
+               <div class="commission-cards"><NCard><div class="mini-label">目前模式</div><div class="big-value"><NTag type="success" size="small" round>返佣</NTag> <NTag type="info" size="small">總代設定</NTag></div><p class="muted">有效投注額按方案比例計算</p></NCard><NCard><div class="mini-label">結算週期</div><div class="big-value">{{ selectedCycle }}</div><p class="muted">變更於下一個結算週期生效</p></NCard><NCard><div class="mini-label">本期可提領</div><div class="big-value positive">TWD 28,460</div><p class="muted">已扣除追回與手續費</p></NCard></div>
               <NCard title="傭金明細" class="table-card"><NTabs type="line"><NTabPane name="all" tab="全部"><div class="commission-row" v-for="row in [{date:'08/31',type:'返佣',source:'north_team · 有效投注',amount:'+ TWD 3,240'},{date:'08/30',type:'佔成',source:'east_team · 輸贏扣行政成本',amount:'+ TWD 1,200'},{date:'08/28',type:'追回',source:'異常訂單 P-20318',amount:'- TWD 400'}]" :key="row.date + row.source"><div><strong>{{ row.type }}</strong><span>{{ row.date }} · {{ row.source }}</span></div><strong :class="row.amount.startsWith('-') ? 'negative' : 'positive'">{{ row.amount }}</strong></div></NTabPane></NTabs></NCard>
             </section>
 
             <section v-else-if="activeKey === 'withdrawal'">
               <div class="section-head"><div><h1>提領傭金</h1><p class="muted">提領申請送出後由運營商審核，審核期間不會刪除原紀錄。</p></div><NButton type="primary" @click="showWithdrawal = true">申請提領</NButton></div>
-              <div class="withdraw-grid"><NCard><NStatistic label="可提領傭金" :value="28460" prefix="TWD " /><NDivider /><div class="summary-list"><div><span>最低提領</span><strong>TWD 1,000</strong></div><div><span>手續費</span><strong>每筆 TWD 30</strong></div><div><span>每日次數上限</span><strong>3 次</strong></div></div></NCard><NCard title="申請紀錄"><div class="commission-row"><div><strong>審核中</strong><span>2026/08/27 09:43 · TWD 12,000</span></div><NTag type="warning" round>待審核</NTag></div><div class="commission-row"><div><strong>已完成</strong><span>2026/08/20 15:10 · TWD 8,000</span></div><NTag type="success" round>已撥款</NTag></div></NCard></div>
+              <div class="withdraw-grid"><NCard><div class="withdraw-status"><NStatistic label="可提領傭金" :value="withdrawableBalance" prefix="TWD " /><NTag :type="withdrawalEligible ? 'success' : 'error'" round>{{ withdrawalEligible ? '可提領' : '不可提領' }}</NTag></div><NDivider /><div class="summary-list"><div><span>最低提領</span><strong>TWD {{ withdrawalMin.toLocaleString() }}</strong></div><div><span>手續費</span><strong>每筆 TWD 30</strong></div><div><span>今日已申請／上限</span><strong>{{ withdrawalTodayCount }}／{{ withdrawalDailyLimit }} 次</strong></div></div><p class="modal-help">可提領狀態依「可提領餘額達最低金額」且「今日申請次數未達上限」判定；送出後仍須由運營商審核。</p></NCard><NCard title="申請紀錄"><div class="commission-row"><div><strong>審核中</strong><span>2026/08/27 09:43 · TWD 12,000</span></div><NTag type="warning" round>待審核</NTag></div><div class="commission-row"><div><strong>已完成</strong><span>2026/08/20 15:10 · TWD 8,000</span></div><NTag type="success" round>已撥款</NTag></div></NCard></div>
             </section>
 
             <section v-else-if="activeKey === 'reports'">
@@ -794,6 +876,16 @@ const playerColumns = computed(() => [
         </NLayout>
       </NLayout>
 
+      <NModal v-model:show="showDeactivateAgentConfirm" preset="card" title="停用代理" class="modal-card">
+        <p class="modal-intro">{{ pendingDeactivateAgent ? `即將停用代理「${pendingDeactivateAgent.account}」。` : '' }}</p>
+        <div class="auth-warning"><strong>停用影響說明</strong><p>此操作只會停用代理帳號，不會移除代理線，也不會影響既有下級、歷史傭金與當期結算。若要將代理及其下級轉移至其他代理線，請使用「更換代理線」。</p></div>
+        <template #footer><NSpace justify="end"><NButton @click="showDeactivateAgentConfirm = false">取消</NButton><NButton type="warning" @click="confirmDeactivateAgent">確認停用</NButton></NSpace></template>
+      </NModal>
+      <NModal v-model:show="showAgentEdit" preset="card" title="編輯代理基本資料" class="modal-card">
+        <p class="modal-intro">可修改顯示名稱、手機號碼與 Email；帳號、UID、幣別及傭金模式不可在此修改。</p>
+        <NForm label-placement="top"><NFormItem label="真實姓名／顯示名稱"><NInput v-model:value="agentNameDraft" /></NFormItem><div class="form-two-col"><NFormItem label="手機號碼"><NInput v-model:value="agentPhoneDraft" /></NFormItem><NFormItem label="Email"><NInput v-model:value="agentEmailDraft" /></NFormItem></div></NForm>
+        <template #footer><NSpace justify="end"><NButton @click="showAgentEdit = false">取消</NButton><NButton type="primary" @click="saveAgentProfile">儲存</NButton></NSpace></template>
+      </NModal>
       <NModal v-model:show="showLoginTwoFactorSetup" preset="card" title="首次登入：綁定 Google Auth" class="modal-card auth-admin-modal">
         <div class="auth-admin-panel">
           <div class="auth-admin-heading"><div><span>登入帳號</span><strong>{{ loginTwoFactorAccount }}</strong></div><NTag type="warning" round>需要重新綁定</NTag></div>

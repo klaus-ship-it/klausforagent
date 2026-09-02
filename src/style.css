@@ -66,3 +66,16 @@ h1, h2, p { margin: 0; } h1 { font-size: 28px; letter-spacing: -.03em; } h2 { fo
 .n-tag { width: max-content; max-width: 100%; vertical-align: middle; }
 .n-tag .n-tag__content { display: inline-block; margin: 0; color: inherit; font-size: inherit; line-height: 1.25; }
 .auth-qr-modal-content { margin-top: 18px; }
+.auth-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 14px 0 16px; border-bottom: 1px solid #e5ebf5; }
+.auth-toggle-row strong, .auth-toggle-row span { display: block; }
+.auth-toggle-row strong { color: #253653; font-size: 14px; }
+.auth-toggle-row span { color: #78869c; font-size: 12px; margin-top: 4px; }
+.auth-toggle-row .n-switch { --n-height: 32px; --n-width: 78px; }
+.auth-toggle-row .n-switch .n-switch__rail { min-width: 78px; }
+.auth-page-actions { flex-wrap: wrap; }
+.auth-last-reset { color: #8a6330; font-size: 12px; margin-top: 4px; }
+.wallet-action-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; border: 1px solid #d9e4ff; background: #f4f7ff !important; }
+.wallet-action-row > div { min-width: 0; }
+.wallet-action-row small { display: block; color: #78869c; font-size: 11px; margin-top: 4px; }
+.wallet-status-row > div { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 5px; }
+.wallet-review-note { border-left: 3px solid #d9e4ff; }

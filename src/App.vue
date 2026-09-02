@@ -53,6 +53,7 @@ interface AgentRow {
   email?: string
   contactMethod?: string
   twoFactor?: '已啟用' | '未啟用'
+  twoFactorBoundAt?: string
   level: string
   path: string
   currency: string
@@ -139,6 +140,9 @@ const newAgentRole = ref<Role>('一般代理')
 const showAgentDetail = ref(false)
 const selectedAgent = ref<AgentRow | null>(null)
 const detailTab = ref<'basic' | 'wallet' | 'relationship' | 'commission' | 'logs'>('basic')
+const showTwoFactorAdmin = ref(false)
+const twoFactorAdminStep = ref<'overview' | 'qr'>('overview')
+const selectedTwoFactorAgent = ref<AgentRow | null>(null)
 const showPlayerDetail = ref(false)
 const selectedPlayer = ref<PlayerRow | null>(null)
 const playerDetailTab = ref<'basic' | 'wallet' | 'vip' | 'promotion' | 'audit' | 'asset' | 'game' | 'transfer' | 'invite' | 'agent'>('basic')
@@ -206,8 +210,8 @@ function agentPlanSummary(row: AgentRow) {
 }
 
 const agentRows = ref<AgentRow[]>([
-  { id: 'A-1001', uid: 'AG-10001', account: 'agent_taipei', displayName: '台北總代理', referralCode: 'AGT-TW-8F4K', phone: '0912345678', email: 'taipei@example.com', contactMethod: 'Line: @agent_taipei', twoFactor: '已啟用', level: '總代理', path: 'agent_taipei', currency: 'TWD', point: 6, children: 3, walletBalance: 28460, status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
-  { id: 'A-1006', uid: 'AG-10121', account: 'agent_pnl', displayName: '佔成總代理', referralCode: 'AGT-TWD-PNL3', phone: '0922333444', email: 'pnl@example.com', contactMethod: 'Line: @agent_pnl', twoFactor: '未啟用', level: '總代理', path: 'agent_pnl', currency: 'TWD', point: 5, children: 6, walletBalance: 9740, status: '啟用', planId: 'PLAN-003', model: '佔成', cycle: '每月' },
+  { id: 'A-1001', uid: 'AG-10001', account: 'agent_taipei', displayName: '台北總代理', referralCode: 'AGT-TW-8F4K', phone: '0912345678', email: 'taipei@example.com', contactMethod: 'Line: @agent_taipei', twoFactor: '已啟用', twoFactorBoundAt: '2026-07-18 14:22:08', level: '總代理', path: 'agent_taipei', currency: 'TWD', point: 6, children: 3, walletBalance: 28460, status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
+  { id: 'A-1006', uid: 'AG-10121', account: 'agent_pnl', displayName: '佔成總代理', referralCode: 'AGT-TWD-PNL3', phone: '0922333444', email: 'pnl@example.com', contactMethod: 'Line: @agent_pnl', twoFactor: '未啟用', twoFactorBoundAt: '尚未綁定', level: '總代理', path: 'agent_pnl', currency: 'TWD', point: 5, children: 6, walletBalance: 9740, status: '啟用', planId: 'PLAN-003', model: '佔成', cycle: '每月' },
   { id: 'A-1002', uid: 'AG-10024', account: 'north_team', displayName: '北區團隊', referralCode: 'AGT-TW-NORTH', phone: '0987654321', email: 'north@example.com', contactMethod: 'Line: @north_team', twoFactor: '未啟用', level: '一級代理', path: 'agent_taipei > north_team', currency: 'TWD', point: 4, children: 8, walletBalance: 12680, status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
   { id: 'A-1003', uid: 'AG-10088', account: 'east_team', displayName: '東區團隊', referralCode: 'AGT-TW-EAST', phone: '0955123788', email: 'east@example.com', contactMethod: 'Email', twoFactor: '未啟用', level: '一級代理', path: 'agent_taipei > east_team', currency: 'TWD', point: 3, children: 5, walletBalance: 8340, status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
   { id: 'A-1004', uid: 'AG-10102', account: 'sub_partner_01', displayName: '合作夥伴 01', referralCode: 'AGT-TW-SUB01', phone: '0933123456', email: 'partner01@example.com', contactMethod: 'Line: @sub_partner_01', twoFactor: '未啟用', level: '二級代理', path: 'agent_taipei > north_team > sub_partner_01', currency: 'TWD', point: 2, children: 2, walletBalance: 4260, status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
@@ -323,7 +327,7 @@ function createAgent() {
   const savedPoint = selected.allocationRate
   const level = currentRole.value === '運營商' ? '總代理' : currentRole.value === '總代理' ? '一級代理' : '二級代理'
   const basePath = currentRole.value === '運營商' ? account : `${identity.value.account} > ${account}`
-  agentRows.value.push({ id: `A-${1000 + next}`, uid: `AG-${10000 + next}`, account, displayName: newAgentName.value.trim() || account, referralCode: `AGT-${newAgentCurrency.value}-${String(next).padStart(4, '0')}`, phone: newAgentPhone.value.trim(), email: newAgentEmail.value.trim(), contactMethod: '尚未設定', twoFactor: '未啟用', level, path: basePath, currency: newAgentCurrency.value, point: savedPoint, children: 0, walletBalance: 0, status: '啟用', planId: selected.id, model: selected.model, cycle: selected.cycle })
+  agentRows.value.push({ id: `A-${1000 + next}`, uid: `AG-${10000 + next}`, account, displayName: newAgentName.value.trim() || account, referralCode: `AGT-${newAgentCurrency.value}-${String(next).padStart(4, '0')}`, phone: newAgentPhone.value.trim(), email: newAgentEmail.value.trim(), contactMethod: '尚未設定', twoFactor: '未啟用', twoFactorBoundAt: '尚未綁定', level, path: basePath, currency: newAgentCurrency.value, point: savedPoint, children: 0, walletBalance: 0, status: '啟用', planId: selected.id, model: selected.model, cycle: selected.cycle })
   selected.assignedCount += 1
   showCreateAgent.value = false
   newAgentAccount.value = ''
@@ -374,6 +378,31 @@ function openAgent(row: AgentRow) {
   detailTab.value = 'basic'
   draftPlanId.value = row.planId
   showAgentDetail.value = true
+}
+
+function openTwoFactorAdmin(row: AgentRow) {
+  if (currentRole.value !== '運營商') {
+    showNotice('warning', '無管理權限', 'Google Auth 管理僅限運營商操作。')
+    return
+  }
+  selectedTwoFactorAgent.value = row
+  twoFactorAdminStep.value = 'overview'
+  showTwoFactorAdmin.value = true
+}
+
+function prepareTwoFactorReset() {
+  if (!selectedTwoFactorAgent.value) return
+  twoFactorAdminStep.value = 'qr'
+}
+
+function completeTwoFactorReset() {
+  if (!selectedTwoFactorAgent.value) return
+  selectedTwoFactorAgent.value.twoFactor = '未啟用'
+  selectedTwoFactorAgent.value.twoFactorBoundAt = '待代理重新綁定'
+  logs.value.unshift({ time: '2026-08-31 10:46:00', type: '重設 Google Auth', actor: loginAccount.value, detail: `${selectedTwoFactorAgent.value.account} 的 Google Auth 已重設，等待重新綁定`, ip: '10.20.8.15' })
+  showTwoFactorAdmin.value = false
+  twoFactorAdminStep.value = 'overview'
+  showNotice('success', 'Google Auth 已重設', '舊驗證器已失效，請將新的 QR Code 交給代理重新綁定。')
 }
 
 function saveAgentPlan() {
@@ -668,7 +697,7 @@ const playerColumns = computed(() => [
 
             <section v-else-if="activeKey === 'logs'">
               <div class="section-head"><div><h1>操作日誌</h1><p class="muted">完整保留登入、開設代理、調整反傭、提領等操作。</p></div><NButton secondary @click="exportMessage('操作紀錄')">匯出紀錄</NButton></div>
-              <NCard class="filter-card"><div class="filter-row"><NSelect placeholder="操作類型" clearable :options="[{label:'登入',value:'登入'},{label:'開設代理',value:'開設代理'},{label:'設定反傭',value:'設定反傭'},{label:'提領申請',value:'提領申請'}]" style="width: 180px" /><NInput placeholder="搜尋操作內容或 IP" class="search-input"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput></div></NCard>
+              <NCard class="filter-card"><div class="filter-row"><NSelect placeholder="操作類型" clearable :options="[{label:'登入',value:'登入'},{label:'開設代理',value:'開設代理'},{label:'設定反傭',value:'設定反傭'},{label:'提領申請',value:'提領申請'},{label:'重設 Google Auth',value:'重設 Google Auth'}]" style="width: 180px" /><NInput placeholder="搜尋操作內容或 IP" class="search-input"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput></div></NCard>
               <NCard :bordered="false" class="table-card"><div class="log-table-head"><span>時間</span><span>操作類型</span><span>操作人</span><span>內容</span><span>IP</span></div><div v-for="log in logs" :key="`${log.time}-${log.detail}`" class="log-table-row"><time>{{ log.time }}</time><NTag size="small" round :type="log.type === '登入' ? 'info' : log.type === '提領申請' ? 'warning' : 'default'">{{ log.type }}</NTag><span>{{ log.actor }}</span><span>{{ log.detail }}</span><code>{{ log.ip }}</code></div></NCard>
             </section>
 
@@ -689,7 +718,7 @@ const playerColumns = computed(() => [
             <div><span>帳號類型</span><strong>{{ selectedAgent.level }}</strong><NTag size="small" round>不可修改</NTag></div><div><span>代理 UID（系統生成）</span><strong>{{ selectedAgent.uid || selectedAgent.id }}</strong></div>
              <div><span>推廣碼</span><div class="detail-inline"><strong>{{ selectedAgent.referralCode || '未設定' }}</strong><NButton v-if="selectedAgent.referralCode" size="small" quaternary @click="copyReferral(selectedAgent.referralCode, '代理推廣碼')">複製</NButton></div></div><div><span>真實姓名</span><strong>{{ selectedAgent.displayName || '未填寫' }}</strong></div>
             <div><span>手機號碼</span><strong>{{ maskPhone(selectedAgent.phone) }}</strong></div><div><span>聯絡方式</span><strong>{{ selectedAgent.contactMethod || '未設定' }}</strong></div>
-            <div><span>Email</span><strong>{{ maskEmail(selectedAgent.email) }}</strong></div><div><span>2FA 雙重驗證</span><NTag size="small" :type="selectedAgent.twoFactor === '已啟用' ? 'success' : 'default'" round>{{ selectedAgent.twoFactor || '未啟用' }}</NTag></div>
+             <div><span>Email</span><strong>{{ maskEmail(selectedAgent.email) }}</strong></div><div><span>2FA 雙重驗證</span><div class="detail-inline"><NTag size="small" :type="selectedAgent.twoFactor === '已啟用' ? 'success' : 'default'" round>{{ selectedAgent.twoFactor || '未啟用' }}</NTag><NButton v-if="currentRole === '運營商'" size="small" quaternary @click="openTwoFactorAdmin(selectedAgent)">管理 Google Auth</NButton></div><p class="modal-help">代理遺失驗證器時，由運營商重設後重新綁定。</p></div>
              <div><span>幣別</span><strong>{{ selectedAgent.currency }}</strong></div><div><span>代理傭金錢包餘額</span><strong class="positive">{{ selectedAgent.currency }} {{ selectedAgent.walletBalance.toLocaleString() }}</strong></div><div><span>目前狀態</span><NTag :type="selectedAgent.status === '啟用' ? 'success' : 'error'" round>{{ selectedAgent.status }}</NTag></div>
            </div>
            <div v-else-if="detailTab === 'wallet'" class="agent-detail-grid"><div><span>代理傭金錢包餘額</span><strong class="positive">{{ selectedAgent.currency }} {{ selectedAgent.walletBalance.toLocaleString() }}</strong></div><div><span>待結算傭金</span><strong>{{ selectedAgent.currency }} 12,680</strong></div><div><span>本期產生傭金</span><strong>{{ selectedAgent.currency }} 28,460</strong></div><div><span>可提領狀態</span><NTag type="success" round>可提領</NTag></div><div class="full"><span>錢包權限</span><p class="modal-help">代理傭金錢包僅可查看與申請提領；資金帳變不可轉帳、加扣款，提領需由運營商審核。</p></div></div>
@@ -698,6 +727,22 @@ const playerColumns = computed(() => [
           <div v-else class="detail-log-list"><div v-for="log in logs.filter((item) => item.detail.includes(selectedAgent?.account ?? '')).slice(0, 5)" :key="`${log.time}-${log.detail}`" class="recent-row"><div class="log-dot" /><div><strong>{{ log.type }}</strong><span>{{ log.detail }}</span></div><time>{{ log.time }}</time></div><p v-if="!logs.some((item) => item.detail.includes(selectedAgent?.account ?? ''))" class="modal-help">目前沒有此代理的操作紀錄。</p></div>
        </template>
        <template #footer><NSpace justify="space-between" style="width: 100%"><NButton secondary @click="selectedAgent && deactivateAgent(selectedAgent)">{{ selectedAgent?.status === '啟用' ? '停用代理' : '啟用代理' }}</NButton><NSpace><NButton @click="showAgentDetail = false">關閉</NButton><NButton v-if="detailTab === 'commission'" type="primary" @click="saveAgentPlan">儲存傭金方案</NButton></NSpace></NSpace></template>
+      </NModal>
+      <NModal v-model:show="showTwoFactorAdmin" preset="card" title="Google Auth 管理" class="modal-card auth-admin-modal">
+        <template v-if="selectedTwoFactorAgent">
+          <div v-if="twoFactorAdminStep === 'overview'" class="auth-admin-panel">
+            <div class="auth-admin-heading"><div><span>代理帳號</span><strong>{{ selectedTwoFactorAgent.account }}</strong></div><NTag :type="selectedTwoFactorAgent.twoFactor === '已啟用' ? 'success' : 'warning'" round>{{ selectedTwoFactorAgent.twoFactor || '未啟用' }}</NTag></div>
+            <div class="auth-admin-grid"><div><span>綁定時間</span><strong>{{ selectedTwoFactorAgent.twoFactorBoundAt || '尚未綁定' }}</strong></div><div><span>管理權限</span><strong>運營商</strong></div></div>
+            <div class="auth-warning"><strong>代理遺失 Google Auth 驗證器？</strong><p>重設後，原驗證器立即失效；系統會產生一次性的重新綁定 QR Code，請透過安全管道交給代理完成綁定。</p></div>
+            <NButton type="warning" @click="prepareTwoFactorReset">重設並產生重新綁定 QR Code</NButton>
+          </div>
+          <div v-else class="auth-admin-panel">
+            <div class="auth-admin-heading"><div><span>重新綁定帳號</span><strong>{{ selectedTwoFactorAgent.account }}</strong></div><NTag type="warning" round>待重新綁定</NTag></div>
+            <div class="auth-qr-layout"><div class="auth-qr" aria-label="Google Auth QR Code 示意"><span>QR</span></div><div><strong>請交給代理掃描</strong><ol><li>開啟 Google Authenticator。</li><li>掃描左側 QR Code，或手動輸入密鑰。</li><li>代理確認新驗證碼可使用後，再完成重設。</li></ol><p class="auth-secret">手動密鑰：JBSW Y3DP EHPK 3PXP</p></div></div>
+            <p class="modal-help">此為原型示意。正式版 QR Code 與密鑰只顯示一次，並應避免透過公開訊息傳遞。</p>
+          </div>
+        </template>
+        <template #footer><NSpace justify="end"><NButton @click="showTwoFactorAdmin = false">取消</NButton><NButton v-if="twoFactorAdminStep === 'qr'" type="primary" @click="completeTwoFactorReset">完成重設</NButton></NSpace></template>
       </NModal>
       <NModal v-model:show="showPlayerDetail" preset="card" :title="selectedPlayer ? `玩家詳情 · ${selectedPlayer.account}` : '玩家詳情'" class="modal-card">
         <template v-if="selectedPlayer">

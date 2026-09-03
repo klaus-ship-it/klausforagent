@@ -18,6 +18,8 @@ import {
   NLayoutSider,
   NModal,
   NSelect,
+  NRadio,
+  NRadioGroup,
   NSpace,
   NStatistic,
   NSwitch,
@@ -261,6 +263,11 @@ const showPlayerDetail = ref(false)
 const showPlayerDetailModal = ref(false)
 const selectedPlayer = ref<PlayerRow | null>(null)
 const playerSearch = ref('')
+const playerSearchType = ref<'id' | 'account' | 'phone'>('id')
+const playerAffiliationType = ref<'invite' | 'promo'>('invite')
+const playerAffiliationQuery = ref('')
+const playerAdvancedSearch = ref(false)
+const playerTagsFilter = ref<string[]>([])
 const playerRegisterIp = ref('')
 const playerRegisterDateRange = ref<[number, number] | null>(null)
 const playerParentFilter = ref<string | null>(null)
@@ -507,10 +514,14 @@ const filteredPlayers = computed(() => playerRows.value.filter((row) => {
   const inScope = (selectedParent ? row.path.startsWith(`${basePath} >`) : visibleToRole) && (playerScope.value === 'all' || directPlayer)
   const query = playerSearch.value.trim().toLowerCase()
   const ipQuery = playerRegisterIp.value.trim().toLowerCase()
+  const searchValue = playerSearchType.value === 'id' ? row.id : playerSearchType.value === 'phone' ? row.phone : row.account
+  const affiliationValue = playerAffiliationType.value === 'invite' ? (row.inviteCode || '') : (row.referralCode || '')
   return inScope
-    && (!query || `${row.id}${row.account}${row.displayName}${row.path}`.toLowerCase().includes(query))
+    && (!query || `${searchValue}${row.displayName}${row.path}`.toLowerCase().includes(query))
+    && (!playerAffiliationQuery.value.trim() || affiliationValue.toLowerCase().includes(playerAffiliationQuery.value.trim().toLowerCase()))
     && (!ipQuery || row.registerIp.toLowerCase().includes(ipQuery))
     && (!playerStatusFilter.value || row.status === playerStatusFilter.value)
+    && (!playerTagsFilter.value.length || playerTagsFilter.value.some((tag) => row.tags.includes(tag)))
     && inDateRange(row.registerAt, playerRegisterDateRange.value)
 }))
 const planOptions = computed(() => commissionPlans.value.filter((plan) => plan.status === '啟用' && (currentRole.value === '運營商' || plan.model === lineModel.value)).map((plan) => ({ label: `${plan.name}（${plan.promoCode}／${plan.model}／${plan.cycle}）`, value: plan.id })))
@@ -1423,6 +1434,7 @@ const playerColumns = computed(() => [
 
             <section v-else-if="activeKey === 'players'">
               <template v-if="!showPlayerDetail">
+              <NCard class="player-source-filter" size="small"><div class="player-source-filter-row"><div class="player-source-search"><label>搜尋</label><NRadioGroup v-model:value="playerSearchType" size="small"><NRadio value="id">ID</NRadio><NRadio value="account">帳號</NRadio><NRadio value="phone">手機</NRadio></NRadioGroup><NInput v-model:value="playerSearchDraft" clearable placeholder="請輸入關鍵字" /></div><div class="player-source-search"><label>所屬</label><NRadioGroup v-model:value="playerAffiliationType" size="small"><NRadio value="invite">邀請碼</NRadio><NRadio value="promo">推薦碼</NRadio></NRadioGroup><NInput v-model:value="playerAffiliationQuery" clearable placeholder="請輸入" /></div><NButton type="primary" @click="applyPlayerFilters"><template #icon><NIcon><SearchOutline /></NIcon></template>搜尋</NButton><NButton text @click="playerAdvancedSearch = !playerAdvancedSearch">{{ playerAdvancedSearch ? '收起搜尋' : '進階搜尋' }}</NButton></div><div v-if="playerAdvancedSearch" class="player-source-advanced"><div class="filter-field-group"><label>標籤</label><NSelect v-model:value="playerTagsFilter" multiple clearable placeholder="全部" :options="[{label:'VIP會員',value:'VIP會員'},{label:'一般',value:'一般'},{label:'風控關注',value:'風控關注'}]" /></div><div class="filter-field-group"><label>註冊 IP</label><NInput v-model:value="playerRegisterIpDraft" clearable placeholder="請輸入關鍵字" /></div><div class="filter-field-group"><label>註冊時間</label><NDatePicker v-model:value="playerRegisterDateRangeDraft" type="daterange" clearable format="yyyy-MM-dd" placeholder="開始日期 → 結束日期" /></div><div class="filter-field-group"><label>上級代理</label><NSelect v-model:value="playerParentDraft" clearable placeholder="選擇上級代理" :options="playerParentOptions" /></div><div class="filter-field-group"><label>查詢範圍</label><div class="scope-toggle"><button :class="{ active: playerScopeDraft === 'direct' }" @click="playerScopeDraft = 'direct'">只看直屬</button><button :class="{ active: playerScopeDraft === 'all' }" @click="playerScopeDraft = 'all'">查看全下級</button></div></div></div></NCard>
               <div class="section-head"><div><h1>玩家管理</h1><p class="muted">完整呈現運營後台玩家列表；代理相關路徑於玩家詳情的「代理關係」分頁查看。</p></div><NTag :type="canOperatePlayers ? 'warning' : 'info'" round>{{ canOperatePlayers ? '運營商可操作' : '代理唯讀' }}</NTag></div>
               <div class="table-section-label"><strong>篩選欄位</strong><span>設定條件後點擊搜尋；上級代理僅能查詢目前角色可查看的代理線</span></div><NCard class="filter-card filter-card-emphasis"><div class="filter-row filter-row-advanced"><div class="filter-field-group filter-scope-group"><label>查詢範圍</label><div class="scope-toggle"><button :class="{ active: playerScopeDraft === 'direct' }" @click="playerScopeDraft = 'direct'">只看直屬</button><button :class="{ active: playerScopeDraft === 'all' }" @click="playerScopeDraft = 'all'">查看全下級</button></div></div><div class="filter-field-group filter-account-group"><label>玩家帳號</label><NInput v-model:value="playerSearchDraft" clearable placeholder="搜尋玩家帳號或路徑" class="filter-field filter-account"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput></div><div class="filter-field-group"><label>註冊 IP</label><NInput v-model:value="playerRegisterIpDraft" clearable placeholder="輸入註冊 IP" class="filter-field"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput></div><div class="filter-field-group filter-date-group"><label>註冊時間</label><NDatePicker v-model:value="playerRegisterDateRangeDraft" type="daterange" clearable format="yyyy-MM-dd" start-placeholder="註冊起日" end-placeholder="註冊迄日" placeholder="選擇時間區段" class="filter-date" /></div><div class="filter-field-group filter-parent-group"><label>上級代理</label><NSelect v-model:value="playerParentDraft" clearable placeholder="選擇上級代理" :options="playerParentOptions" class="filter-parent" /></div><div class="filter-field-group"><label>玩家狀態</label><NSelect v-model:value="playerStatusFilterDraft" clearable placeholder="全部狀態" :options="playerStatusOptions" class="filter-select" /></div><NButton type="primary" class="filter-search-button" @click="applyPlayerFilters"><template #icon><NIcon><SearchOutline /></NIcon></template>搜尋</NButton></div></NCard>
               <div class="table-section-label"><strong>資料顯示欄位</strong><span>點擊玩家帳號或右側「查看詳情」即可開啟完整玩家詳情</span></div><NCard :bordered="false" class="table-card"><div class="player-table-wrap"><div class="player-table"><div class="player-table-head"><span>玩家 ID</span><span>玩家帳號</span><span>顯示名稱</span><span>標籤</span><span>RTP</span><span>VIP 等級</span><span>帳號狀態</span><span>在線狀態</span><span>註冊時間</span><span>操作</span></div><div v-for="row in filteredPlayers" :key="row.id" class="player-table-row"><span>{{ row.id }}</span><button class="account-link" @click="openPlayer(row)">{{ row.account }}</button><span>{{ row.displayName }}</span><div class="table-tags"><NTag v-for="tag in row.tags" :key="tag" size="small" round :type="tag === '風控關注' ? 'warning' : 'default'">{{ tag }}</NTag></div><span :class="row.rtp < 100 ? 'positive' : 'negative'">{{ row.rtp }}%</span><span>{{ row.vipLevel }}</span><NTag size="small" round :type="playerStatusType(row.status)">{{ row.status }}</NTag><NTag size="small" round :type="row.isOnline ? 'success' : 'default'">{{ row.isOnline ? '在線' : '離線' }}</NTag><span>{{ row.registerAt }}</span><div class="table-actions"><NButton size="small" secondary type="primary" @click="openPlayer(row)">查看詳情</NButton><NButton v-if="canOperatePlayers" size="small" quaternary @click="managePlayerStatus(row)">狀態管理</NButton></div></div></div></div><div class="table-hint">目前顯示 {{ filteredPlayers.length }} 位玩家；點擊「查看詳情」可查看基本資料、VIP 資訊、資金帳變與代理關係。</div><div class="privacy-note">權限提示：總代理與一般代理只能查看玩家資料；轉線、狀態管理、編輯資料僅由運營商執行。隱私欄位依運營後台規則遮罩。</div></NCard>

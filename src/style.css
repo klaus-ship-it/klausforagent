@@ -237,3 +237,12 @@ body { background: #f4f6f8; color: #1f2937; letter-spacing: .005em; }
 .commission-report-row small { color: #94a3b8; font-size: 11px; }
 .commission-report-row time { color: #64748b; font-size: 12px; white-space: nowrap; }
 .report-action-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.player-source-filter { margin-bottom: 14px; }
+.player-source-filter ~ .filter-card { display: none; }
+.player-source-filter-row { display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap; }
+.player-source-search { display: flex; flex-direction: column; gap: 7px; min-width: 250px; }
+.player-source-search label { color: #475569; font-size: 12px; font-weight: 600; }
+.player-source-search .n-radio-group { margin-bottom: -2px; }
+.player-source-search .n-input { width: 200px; }
+.player-source-advanced { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; border-top: 1px dashed #dbe3ef; margin-top: 16px; padding-top: 16px; }
+.player-source-advanced .filter-field-group { flex-direction: column; align-items: flex-start; gap: 7px; }

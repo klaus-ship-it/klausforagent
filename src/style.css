@@ -161,10 +161,11 @@ body { background: #f4f6f8; color: #1f2937; letter-spacing: .005em; }
 .focus-card small { font-size: 12px; color: #64748b; }
 .focus-card span { font-size: 12px; color: #64748b; }
 .focus-card strong { font-size: 15px; }
-.agent-security-card { margin-top: 14px; opacity: .92; }
-.agent-security-card .n-card__header { padding: 12px 16px 6px !important; color: #64748b; font-size: 13px; }
-.agent-security-card .n-card__content { padding: 8px 16px 12px !important; }
-.agent-security-card .security-setting { gap: 14px; }
-.agent-security-card .security-setting strong { font-size: 13px; color: #475569; }
-.agent-security-card .security-setting .modal-help { margin: 3px 0 0; font-size: 11px; }
+.agent-security-card { width: min(100%, 720px); margin: 12px 0 16px; opacity: .94; }
+.agent-security-card .n-card__header { padding: 7px 14px 2px !important; color: #64748b; font-size: 12px; font-weight: 600; }
+.agent-security-card .n-card-header__main { color: #475569; font-size: 14px; font-weight: 700; }
+.agent-security-card .n-card__content { padding: 4px 14px 8px !important; }
+.agent-security-card .security-setting { justify-content: flex-start; gap: 16px; }
+.agent-security-card .security-setting strong { font-size: 13px; color: #334155; font-weight: 700; }
+.agent-security-card .security-setting .modal-help { margin: 2px 0 0; font-size: 11px; line-height: 1.35; }
 .agent-security-card > .modal-help, .agent-security-card .modal-help:last-child { margin: 5px 0 0; font-size: 11px; }

@@ -335,6 +335,7 @@ const selectedCommissionRecord = ref<CommissionWithdrawalRecord | null>(null)
 const withdrawalOrders = ref<CommissionWithdrawalOrder[]>([
   { id: 'WD-20260902-001', account: 'agent_taipei', currency: 'TWD', amount: 12000, status: '待處理', createdAt: '2026-09-02 11:26:08', updatedAt: '2026-09-02 11:26:08', bankName: '台新銀行', bankAccount: '****9012', bankHolder: 'Klaus Lin' },
   { id: 'WD-20260901-003', account: 'north_team', currency: 'TWD', amount: 6800, status: '處理中', createdAt: '2026-09-01 15:09:22', updatedAt: '2026-09-01 15:18:40', bankName: '國泰世華', bankAccount: '****6621', bankHolder: 'North Chen', processor: 'operator_demo' },
+  { id: 'WD-20260830-009', account: 'north_l2', currency: 'TWD', amount: 3600, status: '處理中', createdAt: '2026-08-30 16:42:18', updatedAt: '2026-08-30 16:50:02', bankName: '玉山銀行', bankAccount: '****7733', bankHolder: 'North L2', processor: 'operator_finance' },
   { id: 'WD-20260825-004', account: 'sub_partner_01', currency: 'TWD', amount: 8600, status: '成功', createdAt: '2026-08-25 09:14:32', updatedAt: '2026-08-25 14:08:21', bankName: '台新銀行', bankAccount: '****9012', bankHolder: 'Partner Lin', processor: 'operator_demo' },
   { id: 'WD-20260728-006', account: 'east_team', currency: 'TWD', amount: 4200, status: '失敗', createdAt: '2026-07-28 13:08:55', updatedAt: '2026-07-29 09:18:06', bankName: '台新銀行', bankAccount: '****4488', bankHolder: 'East Wang', processor: 'operator_demo', failureReason: '收款帳戶驗證未完成' },
 ])

@@ -6,6 +6,7 @@ import {
   NCard,
   NConfigProvider,
   NDataTable,
+  NDatePicker,
   NDivider,
   NForm,
   NFormItem,
@@ -66,6 +67,15 @@ interface AgentRow {
   registerAt?: string
   lastLoginAt?: string
   lastLoginIp?: string
+  directAgentCount?: number
+  directPlayerCount?: number
+  totalAgentCount?: number
+  totalPlayerCount?: number
+  totalDeposit?: number
+  totalEffectiveBet?: number
+  pendingTransferTargetPath?: string
+  pendingTransferEffectiveAt?: string
+  lastTransferAt?: string
   status: '啟用' | '停用'
   planId: string
   model?: '佔成' | '返佣'
@@ -120,6 +130,18 @@ interface PlayerRow {
   bet: number
 }
 
+interface OperationLog {
+  time: string
+  type: string
+  actor: string
+  detail: string
+  ip: string
+  target?: string
+  before?: string
+  after?: string
+  effectiveAt?: string
+}
+
 const themeOverrides = {
   common: { primaryColor: '#2f6fed', primaryColorHover: '#4c83ef', borderRadius: '10px' },
   Button: { borderRadiusMedium: '9px' },
@@ -131,6 +153,7 @@ const activeKey = ref<NavKey>('dashboard')
 const currentRole = ref<Role>('總代理')
 const scope = ref<Scope>('all')
 const search = ref('')
+const agentAccountSearch = ref('')
 const agentLevelFilter = ref<string | null>(null)
 const agentStatusFilter = ref<string | null>(null)
 const agentCommissionFilter = ref<'佔成' | '返佣' | null>(null)
@@ -152,6 +175,7 @@ const showAgentEdit = ref(false)
 const agentNameDraft = ref('')
 const agentPhoneDraft = ref('')
 const agentEmailDraft = ref('')
+const agentPasswordDraft = ref('')
 const detailTab = ref<'basic' | 'wallet' | 'auth' | 'relationship' | 'commission' | 'logs'>('basic')
 const showTwoFactorAdmin = ref(false)
 const selectedTwoFactorAgent = ref<AgentRow | null>(null)
@@ -210,6 +234,14 @@ const showWalletAdjustmentConfirm = ref(false)
 const walletAdjustmentType = ref<'加款' | '扣款'>('加款')
 const walletAdjustmentAmount = ref<number | null>(null)
 const walletAdjustmentReason = ref('')
+const showAgentTransfer = ref(false)
+const showAgentTransferConfirm = ref(false)
+const agentTransferTarget = ref('')
+const pendingAgentTransfer = ref<AgentRow | null>(null)
+const pendingAgentTransferTarget = ref<AgentRow | null>(null)
+const logTypeFilter = ref<string | null>(null)
+const logSearch = ref('')
+const logDateRange = ref<[number, number] | null>(null)
 const selectedCycle = ref('每週')
 const notice = ref<{ type: 'success' | 'warning'; title: string; content: string } | null>(null)
 
@@ -244,11 +276,14 @@ function agentPlanSummary(row: AgentRow) {
 }
 
 const agentRows = ref<AgentRow[]>([
-  { id: 'A-1001', uid: 'AG-10001', account: 'agent_taipei', displayName: '台北總代理', referralCode: 'AGT-TW-8F4K', phone: '0912345678', email: 'taipei@example.com', contactMethod: 'Line: @agent_taipei', twoFactor: '已啟用', twoFactorBoundAt: '2026-07-18 14:22:08', twoFactorRequired: true, level: '總代理', path: 'agent_taipei', currency: 'TWD', point: 6, children: 3, walletBalance: 28460, withdrawalEnabled: true, registerAt: '2026-07-18 14:22:08', lastLoginAt: '2026-09-02 11:00:00', lastLoginIp: '10.20.8.15', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
+  { id: 'A-1001', uid: 'AG-10001', account: 'agent_taipei', displayName: '台北總代理', referralCode: 'AGT-TW-8F4K', phone: '0912345678', email: 'taipei@example.com', contactMethod: 'Line: @agent_taipei', twoFactor: '已啟用', twoFactorBoundAt: '2026-07-18 14:22:08', twoFactorRequired: true, level: '總代理', path: 'agent_taipei', currency: 'TWD', point: 6, children: 3, directAgentCount: 2, directPlayerCount: 2, totalAgentCount: 4, totalPlayerCount: 186, totalDeposit: 342800, totalEffectiveBet: 1284600, walletBalance: 28460, withdrawalEnabled: true, registerAt: '2026-07-18 14:22:08', lastLoginAt: '2026-09-02 11:00:00', lastLoginIp: '10.20.8.15', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
   { id: 'A-1006', uid: 'AG-10121', account: 'agent_pnl', displayName: '佔成總代理', referralCode: 'AGT-TWD-PNL3', phone: '0922333444', email: 'pnl@example.com', contactMethod: 'Line: @agent_pnl', twoFactor: '未啟用', twoFactorBoundAt: '尚未綁定', twoFactorRequired: true, level: '總代理', path: 'agent_pnl', currency: 'TWD', point: 5, children: 6, walletBalance: 9740, withdrawalEnabled: true, registerAt: '2026-07-21 09:12:44', lastLoginAt: '2026-09-01 17:42:10', lastLoginIp: '10.20.8.66', status: '啟用', planId: 'PLAN-003', model: '佔成', cycle: '每月' },
-  { id: 'A-1002', uid: 'AG-10024', account: 'north_team', displayName: '北區團隊', referralCode: 'AGT-TW-NORTH', phone: '0987654321', email: 'north@example.com', contactMethod: 'Line: @north_team', twoFactor: '未啟用', twoFactorRequired: true, level: '一級代理', path: 'agent_taipei > north_team', currency: 'TWD', point: 4, children: 8, walletBalance: 12680, withdrawalEnabled: true, registerAt: '2026-07-22 10:18:21', lastLoginAt: '2026-09-02 09:58:12', lastLoginIp: '10.20.8.42', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
-  { id: 'A-1003', uid: 'AG-10088', account: 'east_team', displayName: '東區團隊', referralCode: 'AGT-TW-EAST', phone: '0955123788', email: 'east@example.com', contactMethod: 'Email', twoFactor: '未啟用', twoFactorRequired: true, level: '一級代理', path: 'agent_taipei > east_team', currency: 'TWD', point: 3, children: 5, walletBalance: 8340, withdrawalEnabled: true, registerAt: '2026-07-23 13:06:50', lastLoginAt: '2026-09-01 21:12:09', lastLoginIp: '10.20.8.78', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
-  { id: 'A-1004', uid: 'AG-10102', account: 'sub_partner_01', displayName: '合作夥伴 01', referralCode: 'AGT-TW-SUB01', phone: '0933123456', email: 'partner01@example.com', contactMethod: 'Line: @sub_partner_01', twoFactor: '未啟用', twoFactorRequired: true, level: '二級代理', path: 'agent_taipei > north_team > sub_partner_01', currency: 'TWD', point: 2, children: 2, walletBalance: 4260, withdrawalEnabled: true, registerAt: '2026-07-25 16:32:04', lastLoginAt: '2026-08-31 19:04:33', lastLoginIp: '10.20.8.91', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
+  { id: 'A-1002', uid: 'AG-10024', account: 'north_team', displayName: '北區團隊', referralCode: 'AGT-TW-NORTH', phone: '0987654321', email: 'north@example.com', contactMethod: 'Line: @north_team', twoFactor: '未啟用', twoFactorRequired: true, level: '一級代理', path: 'agent_taipei > north_team', currency: 'TWD', point: 4, children: 8, directAgentCount: 1, directPlayerCount: 1, totalAgentCount: 2, totalPlayerCount: 74, totalDeposit: 158600, totalEffectiveBet: 628400, walletBalance: 12680, withdrawalEnabled: true, registerAt: '2026-07-22 10:18:21', lastLoginAt: '2026-09-02 09:58:12', lastLoginIp: '10.20.8.42', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
+  { id: 'A-1003', uid: 'AG-10088', account: 'east_team', displayName: '東區團隊', referralCode: 'AGT-TW-EAST', phone: '0955123788', email: 'east@example.com', contactMethod: 'Email', twoFactor: '未啟用', twoFactorRequired: true, level: '一級代理', path: 'agent_taipei > east_team', currency: 'TWD', point: 3, children: 5, directAgentCount: 0, directPlayerCount: 1, totalAgentCount: 0, totalPlayerCount: 48, totalDeposit: 93600, totalEffectiveBet: 328400, walletBalance: 8340, withdrawalEnabled: true, registerAt: '2026-07-23 13:06:50', lastLoginAt: '2026-09-01 21:12:09', lastLoginIp: '10.20.8.78', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
+  { id: 'A-1004', uid: 'AG-10102', account: 'sub_partner_01', displayName: '合作夥伴 01', referralCode: 'AGT-TW-SUB01', phone: '0933123456', email: 'partner01@example.com', contactMethod: 'Line: @sub_partner_01', twoFactor: '未啟用', twoFactorRequired: true, level: '二級代理', path: 'agent_taipei > north_team > sub_partner_01', currency: 'TWD', point: 2, children: 2, directAgentCount: 0, directPlayerCount: 1, totalAgentCount: 0, totalPlayerCount: 21, totalDeposit: 46200, totalEffectiveBet: 164800, walletBalance: 4260, withdrawalEnabled: true, registerAt: '2026-07-25 16:32:04', lastLoginAt: '2026-08-31 19:04:33', lastLoginIp: '10.20.8.91', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
+  { id: 'A-1007', uid: 'AG-10131', account: 'north_l2', displayName: '北區二級代理', referralCode: 'AGT-TW-NL2', phone: '0911222333', email: 'north.l2@example.com', contactMethod: 'Line: @north_l2', twoFactor: '未啟用', twoFactorRequired: true, level: '二級代理', path: 'north_team > north_l2', currency: 'TWD', point: 2, children: 1, directAgentCount: 1, directPlayerCount: 2, totalAgentCount: 2, totalPlayerCount: 32, totalDeposit: 58200, totalEffectiveBet: 214800, walletBalance: 3560, withdrawalEnabled: true, registerAt: '2026-08-01 09:10:00', lastLoginAt: '2026-09-02 10:12:30', lastLoginIp: '10.20.8.101', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
+  { id: 'A-1008', uid: 'AG-10132', account: 'north_l3', displayName: '北區三級代理', referralCode: 'AGT-TW-NL3', phone: '0922444555', email: 'north.l3@example.com', contactMethod: 'Email', twoFactor: '未啟用', twoFactorRequired: true, level: '三級代理', path: 'north_team > north_l2 > north_l3', currency: 'TWD', point: 1, children: 1, directAgentCount: 1, directPlayerCount: 1, totalAgentCount: 1, totalPlayerCount: 18, totalDeposit: 32400, totalEffectiveBet: 118600, walletBalance: 2180, withdrawalEnabled: true, registerAt: '2026-08-08 14:24:10', lastLoginAt: '2026-09-01 16:40:18', lastLoginIp: '10.20.8.102', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
+  { id: 'A-1009', uid: 'AG-10133', account: 'north_l4', displayName: '北區四級代理', referralCode: 'AGT-TW-NL4', phone: '0933666777', email: 'north.l4@example.com', contactMethod: 'Line: @north_l4', twoFactor: '未啟用', twoFactorRequired: true, level: '四級代理', path: 'north_team > north_l2 > north_l3 > north_l4', currency: 'TWD', point: 0.5, children: 0, directAgentCount: 0, directPlayerCount: 4, totalAgentCount: 0, totalPlayerCount: 4, totalDeposit: 9800, totalEffectiveBet: 42600, walletBalance: 960, withdrawalEnabled: true, registerAt: '2026-08-15 18:08:42', lastLoginAt: '2026-09-02 08:15:47', lastLoginIp: '10.20.8.103', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
 ])
 
 const commissionPlans = ref<CommissionPlan[]>([
@@ -262,11 +297,11 @@ const playerRows = ref<PlayerRow[]>([
   { id: 'P-20483', uid: 'P20483', account: 'user_lucky', displayName: 'Lucky 玩家', tags: ['風控關注'], rtp: 108.6, vipLevel: 'VIP0', agentLevel: '一級玩家', referralCode: 'PLY-TW-3M7X-62ZD', status: '凍結', isOnline: false, registerAt: '2026-05-26 20:15:44', phone: '0955123788', email: 'lucky@example.com', gender: '男', birthday: '1988-07-21', registerIp: '10.20.8.70', lastLoginAt: '2026-08-21 11:04:02', lastLoginIp: '10.20.8.71', registerSource: '代理推廣碼', inviteCode: 'INV-LUCKY', consecutiveCheckInDays: 0, path: 'agent_taipei > east_team > user_lucky', currency: 'TWD', deposit: 3200, bet: 18400 },
 ])
 
-const logs = ref([
-  { time: '2026-08-31 10:22:04', type: '登入', actor: 'agent_demo', detail: '代理後台登入成功', ip: '10.20.8.15' },
-  { time: '2026-08-30 18:04:12', type: '設定反傭', actor: 'agent_demo', detail: 'north_team 返佣比例 3% → 4%', ip: '10.20.8.15' },
-  { time: '2026-08-29 14:11:38', type: '開設代理', actor: 'agent_demo', detail: '建立 sub_partner_01，幣別 TWD', ip: '10.20.8.15' },
-  { time: '2026-08-27 09:43:51', type: '提領申請', actor: 'agent_demo', detail: '申請提領 TWD 12,000，待平台審核', ip: '10.20.8.15' },
+const logs = ref<OperationLog[]>([
+  { time: '2026-08-31 10:22:04', type: '登入', actor: 'agent_demo', target: '代理後台', detail: '代理後台登入成功', before: '-', after: '登入成功', ip: '10.20.8.15' },
+  { time: '2026-08-30 18:04:12', type: '設定反傭', actor: 'agent_demo', target: 'north_team', detail: '返佣比例調整', before: '3%', after: '4%', ip: '10.20.8.15' },
+  { time: '2026-08-29 14:11:38', type: '開設代理', actor: 'agent_demo', target: 'sub_partner_01', detail: '建立代理，幣別 TWD', before: '-', after: '啟用／TWD', ip: '10.20.8.15' },
+  { time: '2026-08-27 09:43:51', type: '提領申請', actor: 'agent_demo', target: 'agent_taipei', detail: '申請提領 TWD 12,000', before: '可提領', after: '待平台審核', ip: '10.20.8.15' },
 ])
 
 const navGroups = computed(() => [
@@ -281,12 +316,12 @@ const canCreateAgent = computed(() => currentRole.value !== '運營商' || curre
 const createTitle = computed(() => currentRole.value === '運營商' ? '開設總代理' : '開設下級代理')
 const pageTitle = computed(() => navGroups.value.flatMap((group) => group.items).find((item) => item.key === activeKey.value)?.label ?? '營運概覽')
 const filteredAgents = computed(() => agentRows.value.filter((row) => {
-  const directAgent = currentRole.value === '運營商' ? row.level === '總代理' : row.path === identity.value.account || row.path === `${identity.value.account} > ${row.account}`
+  const directAgent = currentRole.value === '運營商' ? row.level === '總代理' : row.account === identity.value.account || row.path === `${identity.value.account} > ${row.account}`
   const inScope = canViewAgent(row) && (scope.value === 'all' || directAgent)
   const inLevel = !agentLevelFilter.value || row.level === agentLevelFilter.value
   const inStatus = !agentStatusFilter.value || row.status === agentStatusFilter.value
   const inCommission = !agentCommissionFilter.value || row.model === agentCommissionFilter.value
-  return inScope && inLevel && inStatus && inCommission && `${row.account}${row.path}`.toLowerCase().includes(search.value.toLowerCase())
+  return inScope && inLevel && inStatus && inCommission && `${row.account}${row.path}`.toLowerCase().includes(agentAccountSearch.value.toLowerCase())
 }))
 const filteredPlayers = computed(() => playerRows.value.filter((row) => {
   const visibleToRole = currentRole.value === '運營商' || row.path.startsWith(`${identity.value.account} >`)
@@ -315,6 +350,21 @@ const playerStatusOptions = [
   { label: '暫停', value: '暫停' },
 ]
 const playerTransferOptions = computed(() => agentRows.value.filter((row) => row.status === '啟用').map((row) => ({ label: `${row.account} · ${row.path}`, value: row.path })))
+const agentTransferOptions = computed(() => {
+  if (!selectedAgent.value) return []
+  return agentRows.value
+    .filter((row) => row.status === '啟用' && row.level !== '總代理' && row.currency === selectedAgent.value?.currency && row.id !== selectedAgent.value?.id)
+    .filter((row) => !row.path.startsWith(`${selectedAgent.value?.path} >`))
+    .map((row) => ({ label: `${row.account} · ${row.path}`, value: row.id }))
+})
+const filteredLogs = computed(() => logs.value.filter((log) => {
+  const typeMatch = !logTypeFilter.value || log.type === logTypeFilter.value
+  const query = logSearch.value.trim().toLowerCase()
+  const textMatch = !query || `${log.actor}${log.target ?? ''}${log.detail}${log.ip}${log.before ?? ''}${log.after ?? ''}`.toLowerCase().includes(query)
+  const timestamp = new Date(log.time.replace(' ', 'T')).getTime()
+  const dateMatch = !logDateRange.value || (timestamp >= logDateRange.value[0] && timestamp <= logDateRange.value[1] + 86400000 - 1)
+  return typeMatch && textMatch && dateMatch
+}))
 
 function canViewAgent(row: AgentRow) {
   if (currentRole.value === '運營商') return true
@@ -328,7 +378,7 @@ function canManageAgent(row: AgentRow) {
 
 function login() {
   if (!loginAccount.value || !loginPassword.value) {
-    showNotice('warning', '請輸入登入資訊', '此為原型示範，輸入任意非空白帳密即可登入。')
+  showNotice('warning', '請輸入登入資訊', '帳號與密碼皆為必填。')
     return
   }
   const account = loginAccount.value.trim()
@@ -348,7 +398,7 @@ function login() {
 
 function completeLogin() {
   loggedIn.value = true
-  logs.value.unshift({ time: '2026-09-02 11:00:00', type: '登入', actor: loginAccount.value.trim(), detail: `${identity.value.label}登入代理後台成功`, ip: '10.20.8.15' })
+  logs.value.unshift({ time: operationTimestamp(), type: '登入', actor: loginAccount.value.trim(), target: identity.value.account, detail: `${identity.value.label}登入代理後台成功`, before: '-', after: '登入成功', ip: '10.20.8.15' })
 }
 
 function validateTwoFactorCode() {
@@ -386,6 +436,7 @@ function selectNav(key: string) {
   if (key === 'agents') showAgentDetail.value = false
   if (key === 'players') showPlayerDetail.value = false
   search.value = ''
+  agentAccountSearch.value = ''
   agentLevelFilter.value = null
   agentStatusFilter.value = null
   agentCommissionFilter.value = null
@@ -406,7 +457,7 @@ function deactivateAgent(row: AgentRow) {
 
 function applyAgentStatus(row: AgentRow) {
   row.status = row.status === '啟用' ? '停用' : '啟用'
-  logs.value.unshift({ time: '2026-08-31 10:30:00', type: row.status === '啟用' ? '啟用代理' : '停用代理', actor: loginAccount.value, detail: `${row.account} 狀態變更為${row.status}`, ip: '10.20.8.15' })
+  logs.value.unshift({ time: operationTimestamp(), type: row.status === '啟用' ? '啟用代理' : '停用代理', actor: loginAccount.value, target: row.account, detail: '代理狀態變更', before: row.status === '啟用' ? '停用' : '啟用', after: row.status, ip: '10.20.8.15' })
   showNotice('success', '狀態已更新', `${row.account} 現在為${row.status}`)
 }
 
@@ -441,7 +492,7 @@ function createAgent() {
   newAgentEmail.value = ''
   newAgentPassword.value = ''
   newAgentPlanId.value = 'PLAN-001'
-  logs.value.unshift({ time: '2026-08-31 10:31:00', type: '開設代理', actor: loginAccount.value, detail: `建立${level} ${account}（立即啟用）`, ip: '10.20.8.15' })
+  logs.value.unshift({ time: operationTimestamp(), type: '開設代理', actor: loginAccount.value, target: account, detail: `建立${level}，幣別 ${newAgentCurrency.value}`, before: '-', after: '啟用', ip: '10.20.8.15' })
   showNotice('success', '代理已建立', `${account} 可立即登入使用；已套用「${selected.name}」。`)
 }
 
@@ -459,7 +510,7 @@ function submitWithdrawal() {
     return
   }
   showWithdrawal.value = false
-  logs.value.unshift({ time: '2026-08-31 10:32:00', type: '提領申請', actor: loginAccount.value, detail: `申請提領 TWD ${withdrawalAmount.value.toLocaleString()}，待平台審核`, ip: '10.20.8.15' })
+  logs.value.unshift({ time: operationTimestamp(), type: '提領申請', actor: loginAccount.value, target: identity.value.account, detail: `申請提領 TWD ${withdrawalAmount.value.toLocaleString()}`, before: '可提領', after: '待平台審核', ip: '10.20.8.15' })
   showNotice('success', '提領申請已送出', '平台審核完成前，金額會維持在待審核餘額。')
   withdrawalAmount.value = null
 }
@@ -470,7 +521,7 @@ function saveBankCard() {
     return
   }
   showBankCard.value = false
-  logs.value.unshift({ time: '2026-08-31 10:36:00', type: '更新帳戶', actor: loginAccount.value, detail: '新增／更新傭金收款銀行卡', ip: '10.20.8.15' })
+  logs.value.unshift({ time: operationTimestamp(), type: '更新帳戶', actor: loginAccount.value, target: identity.value.account, detail: '新增／更新傭金收款銀行卡', before: '舊收款帳戶', after: '新收款帳戶待驗證', ip: '10.20.8.15' })
   showNotice('success', '銀行卡已更新', '此銀行卡將作為後續傭金提領的收款帳戶。')
 }
 
@@ -502,6 +553,7 @@ function editAgent(row: AgentRow) {
   agentNameDraft.value = row.displayName
   agentPhoneDraft.value = row.phone ?? ''
   agentEmailDraft.value = row.email ?? ''
+  agentPasswordDraft.value = ''
   showAgentEdit.value = true
 }
 
@@ -513,9 +565,58 @@ function saveAgentProfile() {
   selectedAgent.value.displayName = agentNameDraft.value.trim()
   selectedAgent.value.phone = agentPhoneDraft.value.trim()
   selectedAgent.value.email = agentEmailDraft.value.trim()
-  logs.value.unshift({ time: '2026-09-02 11:12:00', type: '編輯代理資料', actor: loginAccount.value, detail: `${selectedAgent.value.account} 基本資料已更新`, ip: '10.20.8.15' })
+  const passwordChanged = Boolean(agentPasswordDraft.value.trim())
+  logs.value.unshift({ time: operationTimestamp(), type: '編輯代理資料', actor: loginAccount.value, target: selectedAgent.value.account, detail: passwordChanged ? '基本資料與登入密碼已更新' : '基本資料已更新（登入密碼未變更）', before: passwordChanged ? '原密碼' : '密碼維持不變', after: passwordChanged ? '新密碼已設定' : '密碼維持不變', ip: '10.20.8.15' })
   showAgentEdit.value = false
+  agentPasswordDraft.value = ''
   showNotice('success', '代理資料已更新', `${selectedAgent.value.account} 的基本資料已儲存。`)
+}
+
+const nextSettlementEffectiveAt = computed(() => selectedAgent.value ? `${selectedAgent.value.cycle === '每月' ? '2026-10-01' : '2026-09-09'} 00:00:00` : '')
+
+function openAgentTransfer(row: AgentRow) {
+  if (currentRole.value !== '運營商' && currentRole.value !== '總代理') {
+    showNotice('warning', '無操作權限', '代理轉線只能由運營商或總代理操作。')
+    return
+  }
+  if (row.level === '總代理') {
+    showNotice('warning', '不可轉線', '總代理不可轉移代理線。')
+    return
+  }
+  selectedAgent.value = row
+  agentTransferTarget.value = ''
+  showAgentTransfer.value = true
+}
+
+function submitAgentTransfer() {
+  if (!selectedAgent.value || !agentTransferTarget.value) {
+    showNotice('warning', '請選擇新代理線', '請選擇同幣別且不在目前下級樹狀路徑內的代理。')
+    return
+  }
+  const target = agentRows.value.find((row) => row.id === agentTransferTarget.value)
+  if (!target || target.level === '總代理' || target.currency !== selectedAgent.value.currency || target.path.startsWith(`${selectedAgent.value.path} >`)) {
+    showNotice('warning', '代理線不可用', '新代理線必須與目前代理同幣別，且不可選擇自己或自己的下級。')
+    return
+  }
+  pendingAgentTransfer.value = selectedAgent.value
+  pendingAgentTransferTarget.value = target
+  showAgentTransferConfirm.value = true
+}
+
+function confirmAgentTransfer() {
+  if (!pendingAgentTransfer.value || !pendingAgentTransferTarget.value) return
+  const source = pendingAgentTransfer.value
+  const target = pendingAgentTransferTarget.value
+  const effectiveAt = nextSettlementEffectiveAt.value
+  source.pendingTransferTargetPath = `${target.path} > ${source.account}`
+  source.pendingTransferEffectiveAt = effectiveAt
+  source.lastTransferAt = operationTimestamp()
+  logs.value.unshift({ time: operationTimestamp(), type: '代理轉線', actor: loginAccount.value, target: source.account, detail: `預約轉至 ${target.account}；本次結算週期結束後生效`, before: source.path, after: source.pendingTransferTargetPath, effectiveAt, ip: '10.20.8.15' })
+  showAgentTransfer.value = false
+  showAgentTransferConfirm.value = false
+  showNotice('success', '代理轉線已預約', `將於本次結算週期結束後（${effectiveAt}）生效；生效前訂單仍歸原代理線。`)
+  pendingAgentTransfer.value = null
+  pendingAgentTransferTarget.value = null
 }
 
 function openTwoFactorAdmin(row: AgentRow) {
@@ -539,9 +640,9 @@ function canManageTwoFactor(row: AgentRow) {
 }
 
 function viewTwoFactorQr() {
-  if (!selectedTwoFactorAgent.value || selectedTwoFactorAgent.value.twoFactorRequired === false || selectedTwoFactorAgent.value.twoFactor !== '已啟用') return
+  if (!selectedTwoFactorAgent.value || selectedTwoFactorAgent.value.twoFactorRequired === false) return
   showTwoFactorQr.value = true
-  logs.value.unshift({ time: '2026-08-31 10:45:00', type: '查看 Google Auth', actor: loginAccount.value, detail: `查看 ${selectedTwoFactorAgent.value.account} 的 Google Auth QR Code`, ip: '10.20.8.15' })
+  logs.value.unshift({ time: operationTimestamp(), type: '查看 Google Auth', actor: loginAccount.value, target: selectedTwoFactorAgent.value.account, detail: `查看${selectedTwoFactorAgent.value.twoFactor === '已啟用' ? '目前' : '待綁定'} QR Code`, before: selectedTwoFactorAgent.value.twoFactor === '已啟用' ? '已綁定' : '未綁定', after: 'QR Code 已顯示', ip: '10.20.8.15' })
 }
 
 function operationTimestamp() {
@@ -558,7 +659,7 @@ function confirmToggleAgentTwoFactor() {
   if (!selectedTwoFactorAgent.value || pendingTwoFactorRequired.value === null) return
   const value = pendingTwoFactorRequired.value
   selectedTwoFactorAgent.value.twoFactorRequired = value
-  logs.value.unshift({ time: '2026-08-31 10:48:00', type: '代理 2FA 設定', actor: loginAccount.value, detail: `${selectedTwoFactorAgent.value.account} 個別 2FA 預設已${value ? '啟用' : '停用'}`, ip: '10.20.8.15' })
+  logs.value.unshift({ time: operationTimestamp(), type: '代理 2FA 設定', actor: loginAccount.value, target: selectedTwoFactorAgent.value.account, detail: `個別 2FA 要求變更`, before: value ? '停用' : '啟用', after: value ? '啟用' : '停用', ip: '10.20.8.15' })
   showNotice('success', '代理 2FA 設定已更新', `${selectedTwoFactorAgent.value.account} 的個別 2FA 已${value ? '啟用' : '停用'}。`)
   pendingTwoFactorRequired.value = null
   showTwoFactorToggleConfirm.value = false
@@ -574,7 +675,7 @@ function completeTwoFactorReset() {
   selectedTwoFactorAgent.value.twoFactor = '未啟用'
   selectedTwoFactorAgent.value.twoFactorBoundAt = '尚未綁定（下次登入顯示 QR Code）'
   selectedTwoFactorAgent.value.twoFactorLastResetAt = operationTimestamp()
-  logs.value.unshift({ time: '2026-08-31 10:46:00', type: '重設 Google Auth', actor: loginAccount.value, detail: `${selectedTwoFactorAgent.value.account} 的 Google Auth 已重設，等待重新綁定`, ip: '10.20.8.15' })
+  logs.value.unshift({ time: operationTimestamp(), type: '重設 Google Auth', actor: loginAccount.value, target: selectedTwoFactorAgent.value.account, detail: 'QR Code 已重設，等待重新綁定', before: '已綁定', after: '未綁定', effectiveAt: '下次登入綁定流程', ip: '10.20.8.15' })
   showTwoFactorResetConfirm.value = false
   showTwoFactorAdmin.value = false
   showNotice('success', 'QR Code 已重設', selectedTwoFactorAgent.value.twoFactorRequired === false ? '目前此代理不要求 2FA；重新啟用後，代理登入時會進入首次綁定流程。' : '此代理已恢復為尚未綁定狀態，下次登入時會顯示新的綁定 QR Code。')
@@ -594,7 +695,7 @@ function confirmToggleWithdrawalStatus() {
   if (!pendingWithdrawalAgent.value || pendingWithdrawalEnabled.value === null) return
   const enabled = pendingWithdrawalEnabled.value
   pendingWithdrawalAgent.value.withdrawalEnabled = enabled
-  logs.value.unshift({ time: operationTimestamp(), type: '修改提領狀態', actor: loginAccount.value, detail: `${pendingWithdrawalAgent.value.account} 提領狀態變更為${enabled ? '可提領' : '不可提領'}`, ip: '10.20.8.15' })
+  logs.value.unshift({ time: operationTimestamp(), type: '修改提領狀態', actor: loginAccount.value, target: pendingWithdrawalAgent.value.account, detail: '提領狀態變更', before: enabled ? '不可提領' : '可提領', after: enabled ? '可提領' : '不可提領', ip: '10.20.8.15' })
   showNotice('success', '提領狀態已更新', `${pendingWithdrawalAgent.value.account} 現在為${enabled ? '可提領' : '不可提領'}。`)
   pendingWithdrawalAgent.value = null
   pendingWithdrawalEnabled.value = null
@@ -635,8 +736,9 @@ function confirmWalletAdjustment() {
   if (!selectedAgent.value || !walletAdjustmentAmount.value) return
   const amount = walletAdjustmentAmount.value
   const delta = walletAdjustmentType.value === '加款' ? amount : -amount
+  const before = selectedAgent.value.walletBalance
   selectedAgent.value.walletBalance += delta
-  logs.value.unshift({ time: operationTimestamp(), type: '人工加扣款', actor: loginAccount.value, detail: `${selectedAgent.value.account} ${walletAdjustmentType.value} ${selectedAgent.value.currency} ${amount.toLocaleString()}：${walletAdjustmentReason.value.trim()}`, ip: '10.20.8.15' })
+  logs.value.unshift({ time: operationTimestamp(), type: '人工加扣款', actor: loginAccount.value, target: selectedAgent.value.account, detail: `${walletAdjustmentType.value} ${selectedAgent.value.currency} ${amount.toLocaleString()}：${walletAdjustmentReason.value.trim()}`, before: `${selectedAgent.value.currency} ${before.toLocaleString()}`, after: `${selectedAgent.value.currency} ${selectedAgent.value.walletBalance.toLocaleString()}`, ip: '10.20.8.15' })
   showWalletAdjustment.value = false
   showWalletAdjustmentConfirm.value = false
   showNotice('success', '人工加扣款已完成', `${selectedAgent.value.account} 的傭金錢包已${walletAdjustmentType.value}${selectedAgent.value.currency} ${amount.toLocaleString()}。`)
@@ -825,7 +927,7 @@ function playerStatusType(status: PlayerRow['status']) {
 }
 
 function exportMessage(label: string) {
-  showNotice('success', `${label}已準備`, '原型示範不會下載真實資料；正式版將依目前篩選條件匯出。')
+  showNotice('success', `${label}已準備`, '已套用目前篩選條件，資料已準備完成。')
 }
 
 const playerColumns = computed(() => [
@@ -868,7 +970,6 @@ const playerColumns = computed(() => [
             </NFormItem>
             <NButton type="primary" block size="large" @click="login">登入代理後台</NButton>
           </NForm>
-          <div class="demo-hint">原型示範：任意非空白帳密即可登入</div>
         </NCard>
       </div>
 
@@ -876,7 +977,7 @@ const playerColumns = computed(() => [
         <NLayoutSider bordered :width="250" class="sidebar">
           <div class="side-brand"><span class="brand-mark small">Y</span><div><strong>YOTA</strong><span>AGENT CONSOLE</span></div></div>
           <div class="agent-chip"><div class="avatar">{{ identity.label.slice(0, 1) }}</div><div><strong>{{ identity.account }}</strong><span>{{ identity.label }} · {{ identity.currency }}</span></div><ChevronDownOutline class="chip-chevron" /></div>
-          <div class="role-switcher"><span>原型角色切換</span><NSelect v-model:value="currentRole" size="small" :options="[{label:'運營商',value:'運營商'},{label:'總代理',value:'總代理'},{label:'一般代理',value:'一般代理'}]" /></div>
+          <div class="role-switcher"><span>目前角色</span><NSelect v-model:value="currentRole" size="small" :options="[{label:'運營商',value:'運營商'},{label:'總代理',value:'總代理'},{label:'一般代理',value:'一般代理'}]" /></div>
           <div class="nav-scroll">
             <div v-for="group in navGroups" :key="group.title" class="nav-group">
               <div class="nav-title">{{ group.title }}</div>
@@ -914,16 +1015,16 @@ const playerColumns = computed(() => [
               <div class="role-banner"><strong>{{ identity.label }}可執行範圍</strong><span>{{ currentRole === '運營商' ? '建立總代理、設定傭金模式與結算週期，查看全平台代理網絡。' : currentRole === '總代理' ? '建立直屬代理、套用同一代理線傭金模式，查看全部下級與各代理線報表。' : '建立直屬下級代理、套用上級提供的傭金模式，僅查看自身代理線資料。' }}</span></div>
               <NCard title="2FA 全域設定" class="security-card agent-security-card"><div class="security-setting"><div><strong>新代理預設啟用 Google Auth</strong><p class="modal-help">代理建立後，預設決定是否需要在首次登入時綁定 Google Auth。此設定只套用新代理，不追溯修改既有代理。</p></div><NSwitch :value="twoFactorGlobalEnabled" :disabled="currentRole !== '運營商'" @update:value="toggleTwoFactorGlobal" /></div><p class="modal-help">只有運營商可以修改；總代與一般代理僅能查看設定。</p></NCard>
               <div class="agent-focus-grid"><NCard class="focus-card"><div class="focus-icon">A</div><div><span>目前登入角色</span><strong>{{ identity.account }}</strong><small>{{ identity.label }} · {{ identity.currency }} · 可查看{{ currentRole === '運營商' ? '全平台' : '自身代理線' }}</small></div></NCard><NCard class="focus-card"><div class="focus-icon blue">%</div><div><span>傭金方案</span><strong>兩種模式可配置</strong><small>佔成／返佣分開管理，代理僅套用方案。</small></div></NCard><NCard class="focus-card"><div class="focus-icon green">↳</div><div><span>代理線狀態</span><strong>{{ currentRole === '運營商' ? '12 條 · 多幣別' : '3 條 · 幣別一致' }}</strong><small>同一條代理線內代理與玩家必須使用相同幣別。</small></div></NCard></div>
-              <div class="table-section-label"><strong>篩選欄位</strong><span>設定查看範圍、代理層級、傭金模式與狀態</span></div><NCard class="filter-card"><div class="filter-row"><div class="scope-toggle"><button :class="{ active: scope === 'direct' }" @click="scope = 'direct'">只看直屬</button><button :class="{ active: scope === 'all' }" @click="scope = 'all'">查看全部下級</button></div><NSelect v-model:value="agentLevelFilter" clearable placeholder="代理層級" :options="[{label:'總代理',value:'總代理'},{label:'一級代理',value:'一級代理'},{label:'二級代理',value:'二級代理'}]" style="width: 140px" /><NSelect v-model:value="agentCommissionFilter" clearable placeholder="傭金模式" :options="[{label:'佔成',value:'佔成'},{label:'返佣',value:'返佣'}]" style="width: 130px" /><NSelect v-model:value="agentStatusFilter" clearable placeholder="狀態" :options="[{label:'啟用',value:'啟用'},{label:'停用',value:'停用'}]" style="width: 120px" /><NInput v-model:value="search" clearable placeholder="搜尋代理帳號" class="search-input"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput></div></NCard>
-              <div class="table-section-label"><strong>資料顯示欄位</strong><span>代理帳號與層級分開顯示；傭金方案及模式摘要可直接核對</span></div><NCard :bordered="false" class="table-card"><div class="agent-table-wrap"><div class="agent-table"><div class="agent-table-head"><span>代理帳號</span><span>層級</span><span>幣別</span><span>傭金模式</span><span>結算週期</span><span>下級數</span><span>傭金錢包餘額</span><span>狀態</span><span>傭金方案</span><span>模式設定</span><span>操作</span></div><div v-for="row in filteredAgents" :key="row.id" class="agent-table-row"><button class="account-link" @click="openAgent(row)">{{ row.account }}</button><span>{{ row.level }}</span><span>{{ row.currency }}</span><NTag size="small" :type="row.model === '佔成' ? 'warning' : 'success'" round>{{ row.model ?? '沿用上級' }}</NTag><span>{{ row.cycle ?? '沿用上級' }}</span><span>{{ row.children }}</span><strong class="wallet-value">{{ row.currency }} {{ row.walletBalance.toLocaleString() }}</strong><NTag size="small" :type="row.status === '啟用' ? 'success' : 'error'" round>{{ row.status }}</NTag><div><strong>{{ planForAgent(row)?.name ?? '未套用' }}</strong><small class="mode-summary">{{ agentPlanSummary(row) }}</small></div><span class="mode-summary">{{ row.model === '佔成' ? '輸贏－行政成本' : row.model === '返佣' ? '有效投注額' : '-' }}</span><div class="table-actions"><NButton quaternary size="small" @click="openAgent(row)">查看詳情</NButton><NButton quaternary size="small" @click="deactivateAgent(row)">{{ row.status === '啟用' ? '停用' : '啟用' }}</NButton></div></div></div></div><div class="table-hint">傭金錢包餘額為目前可提領金額；方案欄位顯示代理目前套用的推廣碼方案，模式設定摘要可於「傭金方案」查看完整規則。</div></NCard>
+              <div class="table-section-label"><strong>篩選欄位</strong><span>只顯示目前角色可查看的下級代理線</span></div><NCard class="filter-card filter-card-emphasis"><div class="filter-row"><div class="scope-toggle"><button :class="{ active: scope === 'direct' }" @click="scope = 'direct'">只看直屬</button><button :class="{ active: scope === 'all' }" @click="scope = 'all'">查看全部下級</button></div><NInput v-model:value="agentAccountSearch" clearable placeholder="搜尋下級代理帳號" style="width: 220px"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput><NSelect v-model:value="agentLevelFilter" clearable placeholder="代理層級" :options="[{label:'總代理',value:'總代理'},{label:'一級代理',value:'一級代理'},{label:'二級代理',value:'二級代理'},{label:'三級代理',value:'三級代理'},{label:'四級代理',value:'四級代理'}]" style="width: 140px" /><NSelect v-model:value="agentCommissionFilter" clearable placeholder="傭金模式" :options="[{label:'佔成',value:'佔成'},{label:'返佣',value:'返佣'}]" style="width: 130px" /><NSelect v-model:value="agentStatusFilter" clearable placeholder="狀態" :options="[{label:'啟用',value:'啟用'},{label:'停用',value:'停用'}]" style="width: 120px" /></div></NCard>
+              <div class="table-section-label"><strong>代理資料</strong><span>共 {{ filteredAgents.length }} 筆；帳號查詢僅搜尋目前角色可見的下級代理線</span></div><NCard :bordered="false" class="table-card table-card-emphasis"><div class="agent-table-wrap"><div class="agent-table"><div class="agent-table-head"><span>代理帳號</span><span>層級</span><span>幣別</span><span>傭金模式</span><span>結算週期</span><span>下級數</span><span>傭金錢包餘額</span><span>狀態</span><span>傭金方案</span><span>模式設定</span><span>操作</span></div><div v-for="row in filteredAgents" :key="row.id" class="agent-table-row"><button class="account-link" @click="openAgent(row)">{{ row.account }}</button><span>{{ row.level }}</span><span>{{ row.currency }}</span><NTag size="small" :type="row.model === '佔成' ? 'warning' : 'success'" round>{{ row.model ?? '沿用上級' }}</NTag><span>{{ row.cycle ?? '沿用上級' }}</span><span>{{ row.children }}</span><strong class="wallet-value">{{ row.currency }} {{ row.walletBalance.toLocaleString() }}</strong><NTag size="small" :type="row.status === '啟用' ? 'success' : 'error'" round>{{ row.status }}</NTag><div><strong>{{ planForAgent(row)?.name ?? '未套用' }}</strong><small class="mode-summary">{{ agentPlanSummary(row) }}</small></div><span class="mode-summary">{{ row.model === '佔成' ? '輸贏－行政成本' : row.model === '返佣' ? '有效投注額' : '-' }}</span><div class="table-actions"><NButton quaternary size="small" @click="openAgent(row)">查看詳情</NButton><NButton quaternary size="small" @click="deactivateAgent(row)">{{ row.status === '啟用' ? '停用' : '啟用' }}</NButton></div></div></div></div><div class="table-hint">傭金錢包餘額為目前可提領金額；方案欄位顯示代理目前套用的推廣碼方案，模式設定摘要可於「傭金方案」查看完整規則。</div></NCard>
               </template>
               <template v-else-if="selectedAgent">
-                  <div class="detail-layout"><aside class="profile-panel"><div class="profile-panel-head"><h3>基本資料</h3><NSpace><NButton v-if="canManageAgent(selectedAgent)" size="small" secondary @click="editAgent(selectedAgent)">編輯資料</NButton><NButton v-if="canManageAgent(selectedAgent)" size="small" :type="selectedAgent.status === '啟用' ? 'warning' : 'primary'" secondary @click="deactivateAgent(selectedAgent)">{{ selectedAgent.status === '啟用' ? '停用代理' : '啟用代理' }}</NButton></NSpace></div><div class="profile-avatar">{{ selectedAgent.displayName?.slice(0, 1) || selectedAgent.account.slice(0, 1).toUpperCase() }}</div><h2>{{ selectedAgent.displayName || selectedAgent.account }}</h2><p class="profile-id">UID：{{ selectedAgent.uid || selectedAgent.id }}</p><div class="profile-status"><NTag :type="selectedAgent.status === '啟用' ? 'success' : 'error'" size="small" round>{{ selectedAgent.status }}</NTag><NTag type="info" size="small" round>{{ selectedAgent.level }}</NTag></div><div class="profile-fields"><div><span>登入帳號</span><strong>{{ selectedAgent.account }}</strong></div><div><span>登入密碼</span><strong>••••••••</strong></div><div><span>帳號類型</span><strong>{{ selectedAgent.level }}</strong></div><div><span>代理 UID</span><strong>{{ selectedAgent.uid || selectedAgent.id }}</strong></div><div><span>真實姓名</span><strong>{{ selectedAgent.displayName || '未填寫' }}</strong></div><div><span>手機號碼</span><strong>{{ maskPhone(selectedAgent.phone) }}</strong></div><div><span>Email</span><strong>{{ maskEmail(selectedAgent.email) }}</strong></div><div><span>代理傭金錢包餘額</span><strong class="positive">{{ selectedAgent.currency }} {{ selectedAgent.walletBalance.toLocaleString() }}</strong></div><div><span>幣別</span><strong>{{ selectedAgent.currency }}</strong></div><div><span>傭金模式</span><strong>{{ selectedAgent.model }}</strong></div><div><span>目前狀態</span><strong>{{ selectedAgent.status }}</strong></div></div></aside><div class="detail-workspace"><div class="detail-page-head"><div><button class="back-link" @click="showAgentDetail = false">← 返回代理管理</button><h1>代理詳情 · {{ selectedAgent.account }}</h1><p class="muted">查看代理帳號、代理線、傭金錢包與安全設定。</p></div><NTag type="info" round>{{ selectedAgent.level }}</NTag></div>
-                 <div class="detail-tabs"><button :class="{ active: detailTab === 'wallet' }" @click="detailTab = 'wallet'">即時資料</button><button :class="{ active: detailTab === 'auth' }" @click="openTwoFactorAdminPage(selectedAgent)">Google Auth</button><button :class="{ active: detailTab === 'relationship' }" @click="detailTab = 'relationship'">代理關係</button><button :class="{ active: detailTab === 'commission' }" @click="detailTab = 'commission'">傭金設定</button><button :class="{ active: detailTab === 'logs' }" @click="detailTab = 'logs'">操作紀錄</button></div>
+                  <div class="detail-layout"><aside class="profile-panel"><div class="profile-panel-head"><h3>基本資料</h3><NSpace><NButton v-if="canManageAgent(selectedAgent)" size="small" secondary @click="editAgent(selectedAgent)">編輯資料</NButton><NButton v-if="canManageAgent(selectedAgent)" size="small" :type="selectedAgent.status === '啟用' ? 'warning' : 'primary'" secondary @click="deactivateAgent(selectedAgent)">{{ selectedAgent.status === '啟用' ? '停用代理' : '啟用代理' }}</NButton></NSpace></div><div class="profile-avatar">{{ selectedAgent.displayName?.slice(0, 1) || selectedAgent.account.slice(0, 1).toUpperCase() }}</div><h2>{{ selectedAgent.displayName || selectedAgent.account }}</h2><p class="profile-id">UID：{{ selectedAgent.uid || selectedAgent.id }}</p><div class="profile-status"><NTag :type="selectedAgent.status === '啟用' ? 'success' : 'error'" size="small" round>{{ selectedAgent.status }}</NTag><NTag type="info" size="small" round>{{ selectedAgent.level }}</NTag></div><div class="profile-fields"><div><span>登入帳號</span><strong>{{ selectedAgent.account }}</strong></div><div><span>登入密碼</span><strong>••••••••</strong></div><div><span>帳號類型</span><strong>{{ selectedAgent.level }}</strong></div><div><span>代理 UID</span><strong>{{ selectedAgent.uid || selectedAgent.id }}</strong></div><div><span>真實姓名</span><strong>{{ selectedAgent.displayName || '未填寫' }}</strong></div><div><span>手機號碼</span><strong>{{ maskPhone(selectedAgent.phone) }}</strong></div><div><span>Email</span><strong>{{ maskEmail(selectedAgent.email) }}</strong></div><div><span>代理傭金錢包餘額</span><strong class="positive">{{ selectedAgent.currency }} {{ selectedAgent.walletBalance.toLocaleString() }}</strong></div><div><span>幣別</span><strong>{{ selectedAgent.currency }}</strong></div><div><span>註冊時間</span><strong>{{ selectedAgent.registerAt || '尚未記錄' }}</strong></div></div></aside><div class="detail-workspace"><div class="detail-page-head"><div><button class="back-link" @click="showAgentDetail = false">← 返回代理管理</button><h1>代理詳情 · {{ selectedAgent.account }}</h1><p class="muted">查看代理帳號、代理線、傭金錢包與安全設定。</p></div><NTag type="info" round>{{ selectedAgent.level }}</NTag></div>
+                  <div class="detail-tabs"><button :class="{ active: detailTab === 'wallet' }" @click="detailTab = 'wallet'">即時資料</button><button :class="{ active: detailTab === 'auth' }" @click="openTwoFactorAdminPage(selectedAgent)">Google Auth</button><button :class="{ active: detailTab === 'relationship' }" @click="detailTab = 'relationship'">代理資訊</button><button :class="{ active: detailTab === 'commission' }" @click="detailTab = 'commission'">傭金設定</button><button :class="{ active: detailTab === 'logs' }" @click="detailTab = 'logs'">操作紀錄</button></div>
                 <div v-if="detailTab === 'basic'" class="agent-detail-grid detail-page-card"><div><span>登入帳號</span><strong>{{ selectedAgent.account }}</strong></div><div><span>代理傭金錢包餘額</span><strong class="positive">{{ selectedAgent.currency }} {{ selectedAgent.walletBalance.toLocaleString() }}</strong></div><div><span>登入密碼</span><strong>••••••••</strong><p class="modal-help">只有直屬上級、運營商與總代可更改。</p></div><div><span>帳號類型</span><strong>{{ selectedAgent.level }}</strong></div><div><span>代理 UID（系統生成）</span><strong>{{ selectedAgent.uid || selectedAgent.id }}</strong></div><div><span>真實姓名</span><strong>{{ selectedAgent.displayName || '未填寫' }}</strong></div><div><span>手機號碼</span><strong>{{ maskPhone(selectedAgent.phone) }}</strong></div><div><span>Email</span><strong>{{ maskEmail(selectedAgent.email) }}</strong></div><div><span>幣別</span><strong>{{ selectedAgent.currency }}</strong></div><div><span>目前狀態</span><NTag :type="selectedAgent.status === '啟用' ? 'success' : 'error'" round>{{ selectedAgent.status }}</NTag></div></div>
-                 <div v-else-if="detailTab === 'auth'" class="auth-page-card"><div class="auth-page-heading"><div><h3>Google Auth 雙重驗證</h3><p>在本分頁管理此代理是否需要 2FA、查看目前 QR Code，或將綁定狀態重設。</p></div></div><div class="auth-toggle-row"><div><strong>此代理要求 2FA</strong><span>{{ selectedAgent.twoFactorRequired === false ? '登入時不需要 Google Auth' : '登入時需要 Google Auth' }}</span></div><NSwitch :value="selectedAgent.twoFactorRequired !== false" :disabled="!canManageTwoFactor(selectedAgent)" size="large" @update:value="requestToggleAgentTwoFactor"><template #checked>啟用</template><template #unchecked>不啟用</template></NSwitch></div><div class="auth-page-grid"><div><span>個別 2FA 要求</span><strong>{{ selectedAgent.twoFactorRequired === false ? '停用' : '啟用' }}</strong></div><div><span>綁定狀態</span><strong>{{ selectedAgent.twoFactor === '已啟用' ? '已綁定' : '未綁定' }}</strong></div><div><span>綁定時間</span><strong>{{ selectedAgent.twoFactorBoundAt || '尚未綁定' }}</strong></div></div><div class="auth-page-actions"><NButton v-if="canManageTwoFactor(selectedAgent)" secondary :disabled="selectedAgent.twoFactorRequired === false || selectedAgent.twoFactor !== '已啟用'" @click="viewTwoFactorQr">查看目前 QR Code</NButton><NButton v-if="canManageTwoFactor(selectedAgent)" type="warning" :disabled="selectedAgent.twoFactorRequired === false" @click="prepareTwoFactorReset">重設 QR Code</NButton><span>{{ selectedAgent.twoFactorRequired === false ? '目前未啟用 2FA，相關 QR Code 操作不可用' : selectedAgent.twoFactor === '已啟用' ? '目前已綁定，可查看或重設 QR Code' : '目前未綁定，重設按鈕仍可再次執行' }}</span></div><p v-if="selectedAgent.twoFactorLastResetAt" class="auth-last-reset">上次重設時間：{{ selectedAgent.twoFactorLastResetAt }}</p></div>
+                  <div v-else-if="detailTab === 'auth'" class="auth-page-card"><div class="auth-page-heading"><div><h3>Google Auth 雙重驗證</h3><p>在本分頁管理此代理是否需要 2FA、查看目前 QR Code，或將綁定狀態重設。</p></div></div><div class="auth-toggle-row"><div><strong>此代理要求 2FA</strong><span>{{ selectedAgent.twoFactorRequired === false ? '登入時不需要 Google Auth' : '登入時需要 Google Auth' }}</span></div><NSwitch :value="selectedAgent.twoFactorRequired !== false" :disabled="!canManageTwoFactor(selectedAgent)" size="large" @update:value="requestToggleAgentTwoFactor"><template #checked>啟用</template><template #unchecked>不啟用</template></NSwitch></div><div class="auth-page-grid"><div><span>個別 2FA 要求</span><strong>{{ selectedAgent.twoFactorRequired === false ? '停用' : '啟用' }}</strong></div><div><span>綁定狀態</span><strong>{{ selectedAgent.twoFactor === '已啟用' ? '已綁定' : '未綁定' }}</strong></div><div><span>綁定時間</span><strong>{{ selectedAgent.twoFactorBoundAt || '尚未綁定' }}</strong></div></div><div class="auth-page-actions"><NButton v-if="canManageTwoFactor(selectedAgent)" secondary :disabled="selectedAgent.twoFactorRequired === false" @click="viewTwoFactorQr">查看目前 QR Code</NButton><NButton v-if="canManageTwoFactor(selectedAgent)" type="warning" :disabled="selectedAgent.twoFactorRequired === false" @click="prepareTwoFactorReset">重設 QR Code</NButton><span>{{ selectedAgent.twoFactorRequired === false ? '目前未啟用 2FA，相關 QR Code 操作不可用' : selectedAgent.twoFactor === '已啟用' ? '目前已綁定，可查看或重設 QR Code' : '目前未綁定，可查看下一次登入使用的 QR Code，也可再次重設' }}</span></div><p v-if="selectedAgent.twoFactorLastResetAt" class="auth-last-reset">上次重設時間：{{ selectedAgent.twoFactorLastResetAt }}</p></div>
                  <div v-else-if="detailTab === 'wallet'" class="agent-detail-grid detail-page-card"><div class="full wallet-action-row"><div><span>人工資金調整</span><strong>人工加扣款</strong><small>資金帳變不可轉帳；可由運營商人工加扣款，所有調整都會留下操作紀錄。</small></div><NButton type="primary" :disabled="currentRole !== '運營商'" @click="openWalletAdjustment(selectedAgent)">人工加扣款</NButton></div><div><span>代理傭金錢包餘額</span><strong class="positive">{{ selectedAgent.currency }} {{ selectedAgent.walletBalance.toLocaleString() }}</strong></div><div><span>待結算傭金</span><strong>{{ selectedAgent.currency }} 12,680</strong></div><div><span>本期產生傭金</span><strong>{{ selectedAgent.currency }} 28,460</strong></div><div class="wallet-status-row"><span>可提領狀態</span><div><NTag :type="selectedAgent.withdrawalEnabled === false ? 'error' : 'success'" round>{{ selectedAgent.withdrawalEnabled === false ? '不可提領' : '可提領' }}</NTag><NButton size="small" secondary :disabled="currentRole !== '運營商'" @click="requestToggleWithdrawalStatus(selectedAgent)">{{ selectedAgent.withdrawalEnabled === false ? '設為可提領' : '設為不可提領' }}</NButton></div></div><div><span>註冊時間</span><strong>{{ selectedAgent.registerAt || '尚未記錄' }}</strong></div><div><span>最後登入時間</span><strong>{{ selectedAgent.lastLoginAt || '尚未登入' }}</strong></div><div><span>最後登入 IP</span><strong>{{ selectedAgent.lastLoginIp || '尚未記錄' }}</strong></div><div class="full wallet-review-note"><span>提領審核</span><strong>提領申請需由運營商審核</strong></div></div>
-                <div v-else-if="detailTab === 'relationship'" class="agent-detail-grid detail-page-card"><div class="full"><span>完整樹狀路徑</span><strong>{{ selectedAgent.path }}</strong></div><div><span>代理層級</span><strong>{{ selectedAgent.level }}</strong></div><div><span>直屬下級數</span><strong>{{ selectedAgent.children }} 位</strong></div><div class="full"><span>關係說明</span><p class="modal-help">此代理只能隸屬一條代理線；轉移代理線時，生效前後訂單依原／新代理線歸屬，不回溯重算歷史傭金。</p></div></div>
+                  <div v-else-if="detailTab === 'relationship'" class="agent-info-panel detail-page-card"><div class="agent-info-header"><div><span>完整樹狀路徑</span><strong>{{ selectedAgent.path }}</strong><p v-if="selectedAgent.pendingTransferTargetPath" class="pending-transfer">預約新代理線：{{ selectedAgent.pendingTransferTargetPath }}（{{ selectedAgent.pendingTransferEffectiveAt }} 生效）</p></div><NButton v-if="currentRole === '運營商' || currentRole === '總代理'" type="primary" secondary :disabled="selectedAgent.level === '總代理'" @click="openAgentTransfer(selectedAgent)">更換代理線</NButton></div><div class="agent-stat-grid"><div><span>直屬下級代理</span><strong>{{ selectedAgent.directAgentCount ?? selectedAgent.children }} 位</strong></div><div><span>直屬下級玩家</span><strong>{{ selectedAgent.directPlayerCount ?? 0 }} 位</strong></div><div><span>總下級代理</span><strong>{{ selectedAgent.totalAgentCount ?? selectedAgent.children }} 位</strong></div><div><span>總下級玩家</span><strong>{{ selectedAgent.totalPlayerCount ?? 0 }} 位</strong></div><div><span>下級儲值總金額</span><strong>{{ selectedAgent.currency }} {{ (selectedAgent.totalDeposit ?? 0).toLocaleString() }}</strong></div><div><span>下級總有效投注</span><strong>{{ selectedAgent.currency }} {{ (selectedAgent.totalEffectiveBet ?? 0).toLocaleString() }}</strong></div></div><div class="agent-info-rule"><strong>代理轉線規則</strong><p>僅限同幣別代理線；總代理不可轉線。轉線於本次結算週期結束後生效，生效前訂單歸原代理線，生效後新訂單歸新代理線，不回溯重算歷史傭金。</p></div></div>
                 <div v-else-if="detailTab === 'commission'" class="agent-detail-grid detail-page-card"><div class="full"><span>套用傭金方案</span><NSelect v-model:value="draftPlanId" :options="planOptions" /></div><div><span>方案推廣碼</span><strong class="code-text">{{ selectedPlan.promoCode }}</strong></div><div><span>傭金模式</span><strong>{{ selectedPlan.model }}</strong></div><div><span>結算週期</span><strong>{{ selectedPlan.cycle }}</strong></div><div><span>默認可分配點數</span><strong>{{ selectedPlan.allocationRate }}%</strong></div><div class="full"><span>方案規則</span><p class="modal-help">{{ selectedPlan.description }} 下級代理可設定的點數不得超過上級可分配額度。</p></div><div class="full"><NButton type="primary" @click="saveAgentPlan">儲存傭金方案</NButton></div></div>
                 <div v-else class="detail-log-list detail-page-card"><div v-for="log in logs.filter((item) => item.detail.includes(selectedAgent?.account ?? '')).slice(0, 8)" :key="`${log.time}-${log.detail}`" class="recent-row"><div class="log-dot" /><div><strong>{{ log.type }}</strong><span>{{ log.detail }}</span></div><time>{{ log.time }}</time></div><p v-if="!logs.some((item) => item.detail.includes(selectedAgent?.account ?? ''))" class="modal-help">目前沒有此代理的操作紀錄。</p></div>
                 </div></div>
@@ -984,8 +1085,8 @@ const playerColumns = computed(() => [
 
             <section v-else-if="activeKey === 'logs'">
               <div class="section-head"><div><h1>操作日誌</h1><p class="muted">完整保留登入、開設代理、調整反傭、提領等操作。</p></div><NButton secondary @click="exportMessage('操作紀錄')">匯出紀錄</NButton></div>
-              <NCard class="filter-card"><div class="filter-row"><NSelect placeholder="操作類型" clearable :options="[{label:'登入',value:'登入'},{label:'開設代理',value:'開設代理'},{label:'設定反傭',value:'設定反傭'},{label:'提領申請',value:'提領申請'},{label:'查看 Google Auth',value:'查看 Google Auth'},{label:'重設 Google Auth',value:'重設 Google Auth'},{label:'代理 2FA 設定',value:'代理 2FA 設定'},{label:'2FA 全域設定',value:'2FA 全域設定'}]" style="width: 220px" /><NInput placeholder="搜尋操作內容或 IP" class="search-input"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput></div></NCard>
-              <NCard :bordered="false" class="table-card"><div class="log-table-head"><span>時間</span><span>操作類型</span><span>操作人</span><span>內容</span><span>IP</span></div><div v-for="log in logs" :key="`${log.time}-${log.detail}`" class="log-table-row"><time>{{ log.time }}</time><NTag size="small" round :type="log.type === '登入' ? 'info' : log.type === '提領申請' ? 'warning' : 'default'">{{ log.type }}</NTag><span>{{ log.actor }}</span><span>{{ log.detail }}</span><code>{{ log.ip }}</code></div></NCard>
+              <NCard class="filter-card"><div class="filter-row"><NSelect v-model:value="logTypeFilter" placeholder="操作類型" clearable :options="[{label:'登入',value:'登入'},{label:'開設代理',value:'開設代理'},{label:'設定反傭',value:'設定反傭'},{label:'提領申請',value:'提領申請'},{label:'查看 Google Auth',value:'查看 Google Auth'},{label:'重設 Google Auth',value:'重設 Google Auth'},{label:'代理 2FA 設定',value:'代理 2FA 設定'},{label:'代理轉線',value:'代理轉線'},{label:'修改提領狀態',value:'修改提領狀態'},{label:'人工加扣款',value:'人工加扣款'},{label:'編輯代理資料',value:'編輯代理資料'}]" style="width: 220px" /><NDatePicker v-model:value="logDateRange" type="daterange" clearable format="yyyy-MM-dd" placeholder="選擇時間範圍" style="width: 250px" /><NInput v-model:value="logSearch" clearable placeholder="搜尋操作人、對象、內容或 IP" class="search-input"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput></div></NCard>
+              <NCard :bordered="false" class="table-card"><div class="log-table-head log-table-head-detailed"><span>時間</span><span>操作類型</span><span>操作人</span><span>對象</span><span>詳細資訊</span><span>生效時間</span><span>IP</span></div><div v-for="log in filteredLogs" :key="`${log.time}-${log.detail}`" class="log-table-row log-table-row-detailed"><time>{{ log.time }}</time><NTag size="small" round :type="log.type === '登入' ? 'info' : log.type.includes('提領') ? 'warning' : 'default'">{{ log.type }}</NTag><span>{{ log.actor }}</span><span>{{ log.target || '-' }}</span><div><strong>{{ log.detail }}</strong><small v-if="log.before || log.after">{{ log.before || '-' }} → {{ log.after || '-' }}</small></div><span>{{ log.effectiveAt || '-' }}</span><code>{{ log.ip }}</code></div><p v-if="!filteredLogs.length" class="modal-help">目前沒有符合條件的操作紀錄。</p></NCard>
             </section>
 
             <section v-else-if="activeKey === 'profile'">
@@ -1003,9 +1104,20 @@ const playerColumns = computed(() => [
         <template #footer><NSpace justify="end"><NButton @click="showDeactivateAgentConfirm = false">取消</NButton><NButton type="warning" @click="confirmDeactivateAgent">確認停用</NButton></NSpace></template>
       </NModal>
       <NModal v-model:show="showAgentEdit" preset="card" title="編輯代理基本資料" class="modal-card">
-        <p class="modal-intro">可修改顯示名稱、手機號碼與 Email；帳號、UID、幣別及傭金模式不可在此修改。</p>
-        <NForm label-placement="top"><NFormItem label="真實姓名／顯示名稱"><NInput v-model:value="agentNameDraft" /></NFormItem><div class="form-two-col"><NFormItem label="手機號碼"><NInput v-model:value="agentPhoneDraft" /></NFormItem><NFormItem label="Email"><NInput v-model:value="agentEmailDraft" /></NFormItem></div></NForm>
+        <p class="modal-intro">可修改顯示名稱、手機號碼、Email 與登入密碼；帳號、UID、幣別及傭金模式不可在此修改。</p>
+        <NForm label-placement="top"><NFormItem label="真實姓名／顯示名稱"><NInput v-model:value="agentNameDraft" /></NFormItem><div class="form-two-col"><NFormItem label="手機號碼"><NInput v-model:value="agentPhoneDraft" /></NFormItem><NFormItem label="Email"><NInput v-model:value="agentEmailDraft" /></NFormItem></div><NFormItem label="登入密碼"><NInput v-model:value="agentPasswordDraft" type="password" show-password-on="click" placeholder="預設為空白，留白代表不修改密碼" /><template #feedback></template></NFormItem><p class="modal-help">密碼欄位留白送出時，不會修改原登入密碼；只有填寫新密碼才會觸發修改。</p></NForm>
         <template #footer><NSpace justify="end"><NButton @click="showAgentEdit = false">取消</NButton><NButton type="primary" @click="saveAgentProfile">儲存</NButton></NSpace></template>
+      </NModal>
+      <NModal v-model:show="showAgentTransfer" preset="card" title="更換代理線" class="modal-card">
+        <p class="modal-intro">代理轉線會在本次結算週期結束後生效。請選擇同幣別的新上級代理線。</p>
+        <NForm label-placement="top"><NFormItem label="目前代理線"><NInput :value="selectedAgent?.path" readonly /></NFormItem><NFormItem label="新代理線"><NSelect v-model:value="agentTransferTarget" :options="agentTransferOptions" placeholder="選擇同幣別代理線" /></NFormItem></NForm>
+        <div class="auth-warning"><strong>生效時間：{{ nextSettlementEffectiveAt }}</strong><p>生效前訂單仍歸原代理線；生效後的新訂單歸新代理線，歷史傭金不回溯重算。</p></div>
+        <template #footer><NSpace justify="end"><NButton @click="showAgentTransfer = false">取消</NButton><NButton type="primary" @click="submitAgentTransfer">下一步確認</NButton></NSpace></template>
+      </NModal>
+      <NModal v-model:show="showAgentTransferConfirm" preset="card" title="確認代理轉線" class="modal-card">
+        <p class="modal-intro">請確認將「{{ pendingAgentTransfer?.account }}」轉至「{{ pendingAgentTransferTarget?.account }}」代理線。</p>
+        <div class="auth-warning"><strong>本次結算週期結束後生效：{{ nextSettlementEffectiveAt }}</strong><p>只適用同幣別代理線；生效前後訂單分別歸屬原／新代理線，不回溯重算歷史傭金。</p></div>
+        <template #footer><NSpace justify="end"><NButton @click="showAgentTransferConfirm = false">返回修改</NButton><NButton type="warning" @click="confirmAgentTransfer">確認轉線</NButton></NSpace></template>
       </NModal>
       <NModal v-model:show="showLoginTwoFactorSetup" preset="card" title="首次登入：綁定 Google Auth" class="modal-card auth-admin-modal">
         <div class="auth-admin-panel">
@@ -1024,14 +1136,14 @@ const playerColumns = computed(() => [
       </NModal>
       <NModal v-model:show="showAgentDetailModal" preset="card" :title="selectedAgent ? `代理詳情 · ${selectedAgent.account}` : '代理詳情'" class="modal-card">
         <template v-if="selectedAgent">
-           <div class="detail-tabs"><button :class="{ active: detailTab === 'basic' }" @click="detailTab = 'basic'">基本資料</button><button :class="{ active: detailTab === 'wallet' }" @click="detailTab = 'wallet'">即時資料</button><button :class="{ active: detailTab === 'relationship' }" @click="detailTab = 'relationship'">代理關係</button><button :class="{ active: detailTab === 'commission' }" @click="detailTab = 'commission'">傭金設定</button><button :class="{ active: detailTab === 'logs' }" @click="detailTab = 'logs'">操作紀錄</button></div>
+           <div class="detail-tabs"><button :class="{ active: detailTab === 'basic' }" @click="detailTab = 'basic'">基本資料</button><button :class="{ active: detailTab === 'wallet' }" @click="detailTab = 'wallet'">即時資料</button><button :class="{ active: detailTab === 'relationship' }" @click="detailTab = 'relationship'">代理資訊</button><button :class="{ active: detailTab === 'commission' }" @click="detailTab = 'commission'">傭金設定</button><button :class="{ active: detailTab === 'logs' }" @click="detailTab = 'logs'">操作紀錄</button></div>
            <div v-if="detailTab === 'basic'" class="agent-detail-grid">
             <div><span>登入帳號</span><strong>{{ selectedAgent.account }}</strong></div><div><span>登入密碼</span><strong>••••••••</strong><p class="modal-help">如需重設請聯繫平台客服。</p></div>
             <div><span>帳號類型</span><strong>{{ selectedAgent.level }}</strong><NTag size="small" round>不可修改</NTag></div><div><span>代理 UID（系統生成）</span><strong>{{ selectedAgent.uid || selectedAgent.id }}</strong></div>
              <div><span>推廣碼</span><div class="detail-inline"><strong>{{ selectedAgent.referralCode || '未設定' }}</strong><NButton v-if="selectedAgent.referralCode" size="small" quaternary @click="copyReferral(selectedAgent.referralCode, '代理推廣碼')">複製</NButton></div></div><div><span>真實姓名</span><strong>{{ selectedAgent.displayName || '未填寫' }}</strong></div>
             <div><span>手機號碼</span><strong>{{ maskPhone(selectedAgent.phone) }}</strong></div><div><span>聯絡方式</span><strong>{{ selectedAgent.contactMethod || '未設定' }}</strong></div>
              <div><span>Email</span><strong>{{ maskEmail(selectedAgent.email) }}</strong></div><div><span>2FA 雙重驗證</span><div class="detail-inline"><NTag size="small" :type="selectedAgent.twoFactor === '已啟用' ? 'success' : 'default'" round>{{ selectedAgent.twoFactor || '未啟用' }}</NTag><NButton v-if="canManageTwoFactor(selectedAgent)" size="small" quaternary @click="openTwoFactorAdmin(selectedAgent)">管理 Google Auth</NButton></div><p class="modal-help">代理遺失驗證器時，由運營商重設後重新綁定。</p></div>
-             <div><span>幣別</span><strong>{{ selectedAgent.currency }}</strong></div><div><span>代理傭金錢包餘額</span><strong class="positive">{{ selectedAgent.currency }} {{ selectedAgent.walletBalance.toLocaleString() }}</strong></div><div><span>目前狀態</span><NTag :type="selectedAgent.status === '啟用' ? 'success' : 'error'" round>{{ selectedAgent.status }}</NTag></div>
+             <div><span>幣別</span><strong>{{ selectedAgent.currency }}</strong></div><div><span>代理傭金錢包餘額</span><strong class="positive">{{ selectedAgent.currency }} {{ selectedAgent.walletBalance.toLocaleString() }}</strong></div>
            </div>
            <div v-else-if="detailTab === 'wallet'" class="agent-detail-grid"><div><span>代理傭金錢包餘額</span><strong class="positive">{{ selectedAgent.currency }} {{ selectedAgent.walletBalance.toLocaleString() }}</strong></div><div><span>待結算傭金</span><strong>{{ selectedAgent.currency }} 12,680</strong></div><div><span>本期產生傭金</span><strong>{{ selectedAgent.currency }} 28,460</strong></div><div><span>可提領狀態</span><NTag type="success" round>可提領</NTag></div><div class="full"><span>錢包權限</span><p class="modal-help">代理傭金錢包僅可查看與申請提領；資金帳變不可轉帳、加扣款，提領需由運營商審核。</p></div></div>
            <div v-else-if="detailTab === 'relationship'" class="agent-detail-grid"><div class="full"><span>完整樹狀路徑</span><strong>{{ selectedAgent.path }}</strong></div><div><span>代理層級</span><strong>{{ selectedAgent.level }}</strong></div><div><span>直屬下級數</span><strong>{{ selectedAgent.children }} 位</strong></div><div class="full"><span>關係說明</span><p class="modal-help">此代理只能隸屬一條代理線；轉移代理線時，生效前後訂單依原／新代理線歸屬，不回溯重算歷史傭金。</p></div></div>
@@ -1045,16 +1157,16 @@ const playerColumns = computed(() => [
           <div class="auth-admin-panel">
             <div class="auth-admin-heading"><div><span>代理帳號</span><strong>{{ selectedTwoFactorAgent.account }}</strong></div><NTag :type="selectedTwoFactorAgent.twoFactor === '已啟用' ? 'success' : 'warning'" round>{{ selectedTwoFactorAgent.twoFactor || '未啟用' }}</NTag></div>
             <div class="auth-admin-grid"><div><span>綁定時間</span><strong>{{ selectedTwoFactorAgent.twoFactorBoundAt || '尚未綁定' }}</strong></div><div><span>本次操作權限</span><strong>{{ currentRole === '運營商' ? '全部代理' : '自己下線' }}</strong></div></div>
-            <div class="auth-warning"><strong>代理遺失 Google Auth 驗證器？</strong><p>重設後，原驗證器立即失效，代理會恢復為尚未綁定狀態；新的 QR Code 只會在代理下次登入的綁定流程中顯示。</p></div>
-            <NSpace><NButton secondary :disabled="selectedTwoFactorAgent.twoFactorRequired === false || selectedTwoFactorAgent.twoFactor !== '已啟用'" @click="viewTwoFactorQr">查看目前 QR Code</NButton><NButton type="warning" :disabled="selectedTwoFactorAgent.twoFactorRequired === false" @click="prepareTwoFactorReset">重設 QR Code</NButton></NSpace>
+            <div class="auth-warning"><strong>代理遺失 Google Auth 驗證器？</strong><p>重設後，原驗證器立即失效，代理會恢復為尚未綁定狀態；新的 QR Code 可在此查看，也會在代理下次登入的綁定流程中使用。</p></div>
+            <NSpace><NButton secondary :disabled="selectedTwoFactorAgent.twoFactorRequired === false" @click="viewTwoFactorQr">查看目前 QR Code</NButton><NButton type="warning" :disabled="selectedTwoFactorAgent.twoFactorRequired === false" @click="prepareTwoFactorReset">重設 QR Code</NButton></NSpace>
           </div>
         </template>
         <template #footer><NSpace justify="end"><NButton @click="showTwoFactorAdmin = false">關閉</NButton></NSpace></template>
       </NModal>
       <NModal v-model:show="showTwoFactorQr" preset="card" title="查看目前 QR Code" class="modal-card auth-admin-modal">
         <template v-if="selectedTwoFactorAgent">
-          <div class="auth-admin-heading"><div><span>代理帳號</span><strong>{{ selectedTwoFactorAgent.account }}</strong></div><NTag type="success" round>目前已綁定</NTag></div>
-          <div class="auth-qr-layout auth-qr-modal-content"><div class="auth-qr" aria-label="Google Auth QR Code 示意"><span>QR</span></div><div><strong>目前綁定 QR Code</strong><p class="modal-help">此為原型示意；查看行為已寫入操作日誌。正式版應依權限安全顯示。</p><p class="auth-secret">手動密鑰：JBSW Y3DP EHPK 3PXP</p></div></div>
+          <div class="auth-admin-heading"><div><span>代理帳號</span><strong>{{ selectedTwoFactorAgent.account }}</strong></div><NTag :type="selectedTwoFactorAgent.twoFactor === '已啟用' ? 'success' : 'warning'" round>{{ selectedTwoFactorAgent.twoFactor === '已啟用' ? '目前已綁定' : '重設後待綁定' }}</NTag></div>
+          <div class="auth-qr-layout auth-qr-modal-content"><div class="auth-qr" aria-label="Google Auth QR Code 示意"><span>QR</span></div><div><strong>{{ selectedTwoFactorAgent.twoFactor === '已啟用' ? '目前綁定 QR Code' : '下一次登入使用的 QR Code' }}</strong><p class="modal-help">{{ selectedTwoFactorAgent.twoFactor === '已啟用' ? '此為目前綁定中的 QR Code。' : '此為重設後下一次登入綁定流程會提供的 QR Code，現在即可查看。' }}查看行為已寫入操作日誌。</p><p class="auth-secret">手動密鑰：JBSW Y3DP EHPK 3PXP</p></div></div>
         </template>
         <template #footer><NSpace justify="end"><NButton type="primary" @click="showTwoFactorQr = false">關閉</NButton></NSpace></template>
       </NModal>

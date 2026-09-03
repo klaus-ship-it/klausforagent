@@ -291,3 +291,12 @@ body { background: #f4f6f8; color: #1f2937; letter-spacing: .005em; }
 .relationship-clean-title { font-size: 15px; }
 .relationship-clean-metrics { width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .relationship-clean-drawer-head, .relationship-clean-drawer-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.relationship-clean-metrics { grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: start; }
+.relationship-clean-metric { min-width: 0; }
+.relationship-metric-label { display: flex; flex-direction: column; gap: 5px; }
+.relationship-metric-tools { display: flex; align-items: center; gap: 5px; }
+.relationship-metric-sort { width: 78px; height: 24px; padding: 0 5px; border: 1px solid #dbe4ef; border-radius: 6px; background: #fff; color: #71809a; font-size: 10px; cursor: pointer; }
+.relationship-metric-filter { height: 24px; padding: 0 6px; border: 1px solid #dbe4ef; border-radius: 6px; background: #fff; color: #71809a; font-size: 10px; cursor: pointer; white-space: nowrap; }
+.relationship-metric-filter:hover, .relationship-metric-filter.active { border-color: #8eb1ef; color: #2f6fed; background: #eef4ff; }
+.relationship-clean-drawer-head, .relationship-clean-drawer-row { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+@media (max-width: 1100px) { .relationship-clean-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 12px; } .relationship-clean-drawer { overflow-x: auto; } .relationship-clean-drawer-head, .relationship-clean-drawer-row { min-width: 900px; } }

@@ -411,6 +411,21 @@ function toggleRelationshipSection(key: string) {
   ;(groups[groupKey] || [key]).forEach((item) => { relationshipExpanded.value[item] = next })
 }
 
+function relationshipRows(type: 'agents' | 'players', scope: 'all' | 'direct') {
+  const agent = selectedAgent.value
+  if (!agent) return [] as Array<AgentRow | PlayerRow>
+  const prefix = `${agent.path} >`
+  if (type === 'agents') {
+    return agentRows.value.filter((row) => scope === 'all' ? row.path.startsWith(prefix) : row.path === `${agent.path} > ${row.account}`)
+  }
+  const depth = agent.path.split(' > ').length
+  return playerRows.value.filter((row) => scope === 'all' ? row.path.startsWith(prefix) : row.path.split(' > ').length === depth + 1)
+}
+
+function relationshipSum(type: 'agents' | 'players', scope: 'all' | 'direct', field: 'deposit' | 'bet') {
+  return relationshipRows(type, scope).reduce((sum, row) => sum + (type === 'agents' ? ((field === 'deposit' ? (row as AgentRow).totalDeposit : (row as AgentRow).totalEffectiveBet) ?? 0) : (field === 'deposit' ? (row as PlayerRow).deposit : (row as PlayerRow).bet)), 0)
+}
+
 function defaultCommissionConfig(): CommissionConfig {
   return {
     share: { shareRate: 5, adminCostRate: 0, negativeMode: '負數累計', offsetType: '全額沖銷', offsetLimit: 0 },
@@ -1512,6 +1527,31 @@ const playerColumns = computed(() => [
               <div class="profile-grid"><NCard title="個人資料"><div class="profile-list"><div><span>代理帳號</span><strong>{{ identity.account }}</strong></div><div><span>角色</span><strong>{{ identity.label }}</strong></div><div><span>所屬幣別</span><strong>{{ identity.currency }}</strong></div><div><span>手機</span><strong>09******123</strong></div><div><span>Email</span><strong>ka********@example.com</strong></div><div><span>登入密碼</span><strong>••••••••</strong><NButton size="small" quaternary>修改</NButton></div></div></NCard><NCard title="傭金收款銀行卡"><div class="bank-card"><div class="bank-brand">台新銀行</div><strong>**** **** 9012</strong><span>戶名：Klaus Lin</span><NTag type="success" round>已驗證</NTag></div><NButton type="primary" secondary @click="showBankCard = true">管理銀行卡</NButton><p class="modal-help">銀行卡僅用於傭金提領，提領時需選擇已驗證的收款帳戶。</p></NCard></div>
               <NCard title="角色使用說明" class="role-guide"><div class="role-guide-grid"><div><NTag type="info" round>運營商</NTag><p>建立總代理、設定傭金模式與結算週期，查看全平台代理網絡。</p></div><div><NTag type="success" round>總代理</NTag><p>建立直屬代理、設定反傭比例，查看全部下級報表。</p></div><div><NTag round>一般代理</NTag><p>管理自己的直屬下級，僅查看所屬代理線資料。</p></div></div></NCard>
             </section>
+          <div v-if="showAgentDetail && detailTab === 'relationship' && selectedAgent" class="relationship-clean-panel relationship-clean-overlay">
+            <div class="relationship-clean-header">
+              <div><span>完整樹狀路徑</span><strong>{{ displayAgentPath(selectedAgent.path) }}</strong><p v-if="selectedAgent.pendingTransferTargetPath" class="pending-transfer">預約新代理線：{{ displayAgentPath(selectedAgent.pendingTransferTargetPath) }}（{{ selectedAgent.pendingTransferEffectiveAt }} 生效）</p></div>
+              <NButton v-if="currentRole === '運營商' || currentRole === '總代理'" class="agent-transfer-button" type="primary" :disabled="selectedAgent.level === '總代理'" @click="openAgentTransfer(selectedAgent)">更換代理線</NButton>
+            </div>
+            <div class="relationship-clean-rows">
+              <div class="relationship-clean-row">
+                <button class="relationship-clean-trigger" @click="toggleRelationshipSection('totalAgents')"><span class="relationship-clean-title">總下級（含直屬）代理</span><div class="relationship-clean-metrics"><div class="relationship-clean-metric"><small>代理人數</small><strong>{{ relationshipRows('agents', 'all').length }} 位</strong></div><div class="relationship-clean-metric"><small>總儲值金額</small><strong>{{ selectedAgent.currency }} {{ relationshipSum('agents', 'all', 'deposit').toLocaleString() }}</strong></div><div class="relationship-clean-metric"><small>總有效投注</small><strong>{{ selectedAgent.currency }} {{ relationshipSum('agents', 'all', 'bet').toLocaleString() }}</strong></div></div><em>{{ relationshipExpanded.totalAgents ? '收闔' : '展開' }}⌄</em></button>
+                <div v-if="relationshipExpanded.totalAgents" class="relationship-clean-drawer"><div class="relationship-clean-drawer-head"><span>帳號</span><span>儲值總金額</span><span>有效投注</span></div><div v-for="row in relationshipRows('agents', 'all')" :key="row.id" class="relationship-clean-drawer-row"><strong>{{ row.account }}</strong><span>{{ row.currency }} {{ (row.totalDeposit ?? 0).toLocaleString() }}</span><span>{{ row.currency }} {{ (row.totalEffectiveBet ?? 0).toLocaleString() }}</span></div></div>
+              </div>
+              <div class="relationship-clean-row">
+                <button class="relationship-clean-trigger" @click="toggleRelationshipSection('directAgents')"><span class="relationship-clean-title">直屬下級代理</span><div class="relationship-clean-metrics"><div class="relationship-clean-metric"><small>代理人數</small><strong>{{ relationshipRows('agents', 'direct').length }} 位</strong></div><div class="relationship-clean-metric"><small>總儲值金額</small><strong>{{ selectedAgent.currency }} {{ relationshipSum('agents', 'direct', 'deposit').toLocaleString() }}</strong></div><div class="relationship-clean-metric"><small>總有效投注</small><strong>{{ selectedAgent.currency }} {{ relationshipSum('agents', 'direct', 'bet').toLocaleString() }}</strong></div></div><em>{{ relationshipExpanded.directAgents ? '收闔' : '展開' }}⌄</em></button>
+                <div v-if="relationshipExpanded.directAgents" class="relationship-clean-drawer"><div class="relationship-clean-drawer-head"><span>帳號</span><span>儲值總金額</span><span>有效投注</span></div><div v-for="row in relationshipRows('agents', 'direct')" :key="row.id" class="relationship-clean-drawer-row"><strong>{{ row.account }}</strong><span>{{ row.currency }} {{ (row.totalDeposit ?? 0).toLocaleString() }}</span><span>{{ row.currency }} {{ (row.totalEffectiveBet ?? 0).toLocaleString() }}</span></div></div>
+              </div>
+              <div class="relationship-clean-row">
+                <button class="relationship-clean-trigger" @click="toggleRelationshipSection('totalPlayers')"><span class="relationship-clean-title">總下級（含直屬）玩家</span><div class="relationship-clean-metrics"><div class="relationship-clean-metric"><small>玩家人數</small><strong>{{ relationshipRows('players', 'all').length }} 位</strong></div><div class="relationship-clean-metric"><small>總儲值金額</small><strong>{{ selectedAgent.currency }} {{ relationshipSum('players', 'all', 'deposit').toLocaleString() }}</strong></div><div class="relationship-clean-metric"><small>總有效投注</small><strong>{{ selectedAgent.currency }} {{ relationshipSum('players', 'all', 'bet').toLocaleString() }}</strong></div></div><em>{{ relationshipExpanded.totalPlayers ? '收闔' : '展開' }}⌄</em></button>
+                <div v-if="relationshipExpanded.totalPlayers" class="relationship-clean-drawer"><div class="relationship-clean-drawer-head"><span>帳號</span><span>儲值總金額</span><span>有效投注</span></div><div v-for="row in relationshipRows('players', 'all')" :key="row.id" class="relationship-clean-drawer-row"><strong>{{ row.account }}</strong><span>{{ row.currency }} {{ row.deposit.toLocaleString() }}</span><span>{{ row.currency }} {{ row.bet.toLocaleString() }}</span></div></div>
+              </div>
+              <div class="relationship-clean-row">
+                <button class="relationship-clean-trigger" @click="toggleRelationshipSection('directPlayers')"><span class="relationship-clean-title">直屬下級玩家</span><div class="relationship-clean-metrics"><div class="relationship-clean-metric"><small>玩家人數</small><strong>{{ relationshipRows('players', 'direct').length }} 位</strong></div><div class="relationship-clean-metric"><small>總儲值金額</small><strong>{{ selectedAgent.currency }} {{ relationshipSum('players', 'direct', 'deposit').toLocaleString() }}</strong></div><div class="relationship-clean-metric"><small>總有效投注</small><strong>{{ selectedAgent.currency }} {{ relationshipSum('players', 'direct', 'bet').toLocaleString() }}</strong></div></div><em>{{ relationshipExpanded.directPlayers ? '收闔' : '展開' }}⌄</em></button>
+                <div v-if="relationshipExpanded.directPlayers" class="relationship-clean-drawer"><div class="relationship-clean-drawer-head"><span>帳號</span><span>儲值總金額</span><span>有效投注</span></div><div v-for="row in relationshipRows('players', 'direct')" :key="row.id" class="relationship-clean-drawer-row"><strong>{{ row.account }}</strong><span>{{ row.currency }} {{ row.deposit.toLocaleString() }}</span><span>{{ row.currency }} {{ row.bet.toLocaleString() }}</span></div></div>
+              </div>
+            </div>
+            <div class="agent-info-rule"><strong>代理轉線規則</strong><p>僅限同幣別代理線；總代理不可轉線。轉線於本次結算週期結束後生效，生效前訂單歸原代理線，生效後新訂單歸新代理線，不回溯重算歷史傭金。</p></div>
+          </div>
           </main>
         </NLayout>
       </NLayout>

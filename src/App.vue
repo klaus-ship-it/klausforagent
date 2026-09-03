@@ -267,6 +267,9 @@ const pendingAgentTransferTarget = ref<AgentRow | null>(null)
 const logTypeFilter = ref<string | null>(null)
 const logSearch = ref('')
 const logDateRange = ref<[number, number] | null>(null)
+const agentDetailLogType = ref<string | null>(null)
+const agentDetailLogSearch = ref('')
+const agentDetailLogDateRange = ref<[number, number] | null>(null)
 const selectedCycle = ref('每週')
 const notice = ref<{ type: 'success' | 'warning'; title: string; content: string } | null>(null)
 
@@ -425,6 +428,27 @@ const filteredLogs = computed(() => logs.value.filter((log) => {
   const dateMatch = !logDateRange.value || (timestamp >= logDateRange.value[0] && timestamp <= logDateRange.value[1] + 86400000 - 1)
   return typeMatch && textMatch && dateMatch
 }))
+const agentDetailDemoLogs = computed<OperationLog[]>(() => {
+  const account = selectedAgent.value?.account
+  if (!account) return []
+  return [
+    { time: '2026-09-02 11:00:00', type: '登入', actor: account, target: account, detail: '代理後台登入成功', before: '-', after: '登入成功', ip: selectedAgent.value?.lastLoginIp || '10.20.8.15' },
+    { time: '2026-09-01 16:20:14', type: '代理 2FA 設定', actor: 'operator_demo', target: account, detail: '更新 Google Auth 要求', before: '停用', after: '啟用', ip: '10.20.8.15' },
+    { time: '2026-08-30 18:04:12', type: '設定反傭', actor: 'agent_demo', target: account, detail: '套用返佣標準方案', before: '未套用', after: '台灣返佣標準方案', effectiveAt: '2026-09-01 00:00:00', ip: '10.20.8.15' },
+    { time: '2026-08-29 14:11:38', type: '代理轉線', actor: 'operator_demo', target: account, detail: '代理線調整預約', before: selectedAgent.value?.path || '-', after: `${selectedAgent.value?.path || '-'}（新代理線）`, effectiveAt: '本次結算週期結束後', ip: '10.20.8.15' },
+    { time: '2026-08-27 09:43:51', type: '修改提領狀態', actor: 'operator_demo', target: account, detail: '調整可提領狀態', before: '不可提領', after: '可提領', ip: '10.20.8.15' },
+  ]
+})
+const filteredAgentDetailLogs = computed(() => {
+  const query = agentDetailLogSearch.value.trim().toLowerCase()
+  return agentDetailDemoLogs.value.filter((log) => {
+    const typeMatch = !agentDetailLogType.value || log.type === agentDetailLogType.value
+    const textMatch = !query || `${log.actor}${log.target ?? ''}${log.detail}${log.ip}${log.before ?? ''}${log.after ?? ''}`.toLowerCase().includes(query)
+    const timestamp = new Date(log.time.replace(' ', 'T')).getTime()
+    const dateMatch = !agentDetailLogDateRange.value || (timestamp >= agentDetailLogDateRange.value[0] && timestamp <= agentDetailLogDateRange.value[1] + 86400000 - 1)
+    return typeMatch && textMatch && dateMatch
+  })
+})
 
 function canViewAgent(row: AgentRow) {
   if (currentRole.value === '運營商') return true
@@ -1130,7 +1154,7 @@ const playerColumns = computed(() => [
                  <div v-else-if="detailTab === 'wallet'" class="agent-detail-grid detail-page-card"><div class="full wallet-action-row"><div><span>人工資金調整</span><strong>人工加扣款</strong><small>資金帳變不可轉帳；可由運營商人工加扣款，所有調整都會留下操作紀錄。</small></div><NButton type="primary" :disabled="currentRole !== '運營商'" @click="openWalletAdjustment(selectedAgent)">人工加扣款</NButton></div><div><span>代理傭金錢包餘額</span><strong class="positive">{{ selectedAgent.currency }} {{ selectedAgent.walletBalance.toLocaleString() }}</strong></div><div><span>待結算傭金</span><strong>{{ selectedAgent.currency }} 12,680</strong></div><div><span>本期產生傭金</span><strong>{{ selectedAgent.currency }} 28,460</strong></div><div class="wallet-status-row"><span>可提領狀態</span><div><NTag :type="selectedAgent.withdrawalEnabled === false ? 'error' : 'success'" round>{{ selectedAgent.withdrawalEnabled === false ? '不可提領' : '可提領' }}</NTag><NButton size="small" secondary :disabled="currentRole !== '運營商'" @click="requestToggleWithdrawalStatus(selectedAgent)">{{ selectedAgent.withdrawalEnabled === false ? '設為可提領' : '設為不可提領' }}</NButton></div></div><div><span>註冊時間</span><strong>{{ selectedAgent.registerAt || '尚未記錄' }}</strong></div><div><span>最後登入時間</span><strong>{{ selectedAgent.lastLoginAt || '尚未登入' }}</strong></div><div><span>最後登入 IP</span><strong>{{ selectedAgent.lastLoginIp || '尚未記錄' }}</strong></div><div class="full wallet-review-note"><span>提領審核</span><strong>提領申請需由運營商審核</strong></div></div>
                   <div v-else-if="detailTab === 'relationship'" class="agent-info-panel detail-page-card"><div class="agent-info-header"><div><span>完整樹狀路徑</span><strong>{{ selectedAgent.path }}</strong><p v-if="selectedAgent.pendingTransferTargetPath" class="pending-transfer">預約新代理線：{{ selectedAgent.pendingTransferTargetPath }}（{{ selectedAgent.pendingTransferEffectiveAt }} 生效）</p></div><NButton v-if="currentRole === '運營商' || currentRole === '總代理'" type="primary" secondary :disabled="selectedAgent.level === '總代理'" @click="openAgentTransfer(selectedAgent)">更換代理線</NButton></div><div class="agent-stat-grid"><div><span>直屬下級代理</span><strong>{{ selectedAgent.directAgentCount ?? selectedAgent.children }} 位</strong></div><div><span>直屬下級玩家</span><strong>{{ selectedAgent.directPlayerCount ?? 0 }} 位</strong></div><div><span>總下級代理</span><strong>{{ selectedAgent.totalAgentCount ?? selectedAgent.children }} 位</strong></div><div><span>總下級玩家</span><strong>{{ selectedAgent.totalPlayerCount ?? 0 }} 位</strong></div><div><span>下級儲值總金額</span><strong>{{ selectedAgent.currency }} {{ (selectedAgent.totalDeposit ?? 0).toLocaleString() }}</strong></div><div><span>下級總有效投注</span><strong>{{ selectedAgent.currency }} {{ (selectedAgent.totalEffectiveBet ?? 0).toLocaleString() }}</strong></div></div><div class="agent-info-rule"><strong>代理轉線規則</strong><p>僅限同幣別代理線；總代理不可轉線。轉線於本次結算週期結束後生效，生效前訂單歸原代理線，生效後新訂單歸新代理線，不回溯重算歷史傭金。</p></div></div>
                 <div v-else-if="detailTab === 'commission'" class="agent-detail-grid detail-page-card"><div class="full"><span>套用傭金方案</span><NSelect v-model:value="draftPlanId" :options="planOptions" /></div><div><span>方案推廣碼</span><strong class="code-text">{{ selectedPlan.promoCode }}</strong></div><div><span>傭金模式</span><strong>{{ selectedPlan.model }}</strong></div><div><span>結算週期</span><strong>{{ selectedPlan.cycle }}</strong></div><div><span>默認可分配點數</span><strong>{{ selectedPlan.allocationRate }}%</strong></div><div class="full"><span>方案規則</span><p class="modal-help">{{ selectedPlan.description }} 下級代理可設定的點數不得超過上級可分配額度。</p></div><div class="full"><NButton type="primary" @click="saveAgentPlan">儲存傭金方案</NButton></div></div>
-                <div v-else class="detail-log-list detail-page-card"><div v-for="log in logs.filter((item) => item.detail.includes(selectedAgent?.account ?? '')).slice(0, 8)" :key="`${log.time}-${log.detail}`" class="recent-row"><div class="log-dot" /><div><strong>{{ log.type }}</strong><span>{{ log.detail }}</span></div><time>{{ log.time }}</time></div><p v-if="!logs.some((item) => item.detail.includes(selectedAgent?.account ?? ''))" class="modal-help">目前沒有此代理的操作紀錄。</p></div>
+                <div v-else class="agent-log-panel detail-page-card"><div class="table-section-label"><strong>操作紀錄</strong><span>顯示此代理的登入、設定、轉線與提領狀態異動</span></div><NCard class="filter-card filter-card-emphasis agent-detail-log-filter"><div class="filter-row filter-row-advanced"><div class="filter-field-group"><label>操作類型</label><NSelect v-model:value="agentDetailLogType" clearable placeholder="全部類型" :options="[{label:'登入',value:'登入'},{label:'代理 2FA 設定',value:'代理 2FA 設定'},{label:'設定反傭',value:'設定反傭'},{label:'代理轉線',value:'代理轉線'},{label:'修改提領狀態',value:'修改提領狀態'}]" class="filter-select" /></div><div class="filter-field-group filter-date-group"><label>操作時間</label><NDatePicker v-model:value="agentDetailLogDateRange" type="daterange" clearable format="yyyy-MM-dd" start-placeholder="起始日期" end-placeholder="結束日期" placeholder="選擇時間區段" class="filter-date" /></div><div class="filter-field-group filter-account-group"><label>關鍵字</label><NInput v-model:value="agentDetailLogSearch" clearable placeholder="搜尋內容、操作者或 IP" class="filter-field filter-log-search"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput></div></div></NCard><NCard :bordered="false" class="table-card log-detail-card"><div class="log-table-head log-table-head-detailed"><span>時間</span><span>操作類型</span><span>操作人</span><span>詳細資訊</span><span>生效時間</span><span>IP</span></div><div v-for="log in filteredAgentDetailLogs" :key="`${log.time}-${log.detail}`" class="log-table-row log-table-row-detailed"><time>{{ log.time }}</time><NTag size="small" round :type="log.type === '登入' ? 'info' : log.type.includes('提領') ? 'warning' : 'default'">{{ log.type }}</NTag><span>{{ log.actor }}</span><div><strong>{{ log.detail }}</strong><small>{{ log.before || '-' }} → {{ log.after || '-' }}</small></div><span>{{ log.effectiveAt || '-' }}</span><code>{{ log.ip }}</code></div><p v-if="!filteredAgentDetailLogs.length" class="modal-help">目前沒有符合條件的操作紀錄。</p></NCard></div>
                 </div></div>
               </template>
             </section>

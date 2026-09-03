@@ -180,3 +180,8 @@ body { background: #f4f6f8; color: #1f2937; letter-spacing: .005em; }
 .agent-security-card .security-setting strong { font-size: 13px; color: #334155; font-weight: 700; }
 .agent-security-card .security-setting .modal-help { margin: 2px 0 0; font-size: 11px; line-height: 1.35; }
 .agent-security-card > .modal-help, .agent-security-card .modal-help:last-child { margin: 5px 0 0; font-size: 11px; }
+.agent-detail-log-filter { margin-bottom: 14px; }
+.agent-detail-log-filter .filter-log-search { width: 280px; }
+.log-detail-card { overflow-x: auto; }
+.log-detail-card .log-table-head-detailed, .log-detail-card .log-table-row-detailed { grid-template-columns: 96px 78px 82px minmax(140px, 1fr) 104px 78px; min-width: 0; gap: 6px; }
+.log-detail-card .log-table-row-detailed { font-size: 10.5px; }

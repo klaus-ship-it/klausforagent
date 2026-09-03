@@ -302,4 +302,8 @@ body { background: #f4f6f8; color: #1f2937; letter-spacing: .005em; }
 .relationship-clean-header-tools { display: flex; align-items: center; gap: 12px; }
 .relationship-clean-header-tools label { display: flex; align-items: center; gap: 7px; color: #71809a; font-size: 11px; white-space: nowrap; }
 .relationship-clean-header-tools select { height: 30px; padding: 0 9px; border: 1px solid #dbe4ef; border-radius: 7px; background: #fff; color: #315fca; font-size: 11px; cursor: pointer; }
+.relationship-clean-header-main { display: flex; align-items: flex-start; gap: 26px; }
+.relationship-agent-total { min-width: 108px; padding-right: 26px; border-right: 1px solid #e5ebf3; }
+.relationship-agent-total span { display: block; color: #8490a3; font-size: 11px; }
+.relationship-agent-total strong { display: block; margin-top: 6px; color: #315fca; font-size: 18px; white-space: nowrap; }
 @media (max-width: 1100px) { .relationship-clean-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 12px; } .relationship-clean-drawer { overflow-x: auto; } .relationship-clean-drawer-head, .relationship-clean-drawer-row { min-width: 900px; } }

@@ -1604,7 +1604,7 @@ const playerColumns = computed(() => [
             </section>
           <div v-if="showAgentDetail && detailTab === 'relationship' && selectedAgent" class="relationship-clean-panel relationship-clean-overlay">
             <div class="relationship-clean-header">
-              <div><span>完整樹狀路徑</span><strong>{{ displayAgentPath(selectedAgent.path) }}</strong><p v-if="selectedAgent.pendingTransferTargetPath" class="pending-transfer">預約新代理線：{{ displayAgentPath(selectedAgent.pendingTransferTargetPath) }}（{{ selectedAgent.pendingTransferEffectiveAt }} 生效）</p></div>
+              <div class="relationship-clean-header-main"><div class="relationship-agent-total"><span>代理總人數</span><strong>{{ agentRows.length }} 人</strong></div><div><span>完整樹狀路徑</span><strong>{{ displayAgentPath(selectedAgent.path) }}</strong><p v-if="selectedAgent.pendingTransferTargetPath" class="pending-transfer">預約新代理線：{{ displayAgentPath(selectedAgent.pendingTransferTargetPath) }}（{{ selectedAgent.pendingTransferEffectiveAt }} 生效）</p></div></div>
               <div class="relationship-clean-header-tools"><label>資料範圍<select v-model="relationshipFilterScope"><option value="history">歷史</option><option value="cycle">結算週期</option></select></label><NButton v-if="currentRole === '運營商' || currentRole === '總代理'" class="agent-transfer-button" type="primary" :disabled="selectedAgent.level === '總代理'" @click="openAgentTransfer(selectedAgent)">更換代理線</NButton></div>
             </div>
             <div class="relationship-clean-rows">

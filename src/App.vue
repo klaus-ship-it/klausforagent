@@ -143,7 +143,7 @@ interface OperationLog {
 }
 
 const themeOverrides = {
-  common: { primaryColor: '#2f6fed', primaryColorHover: '#4c83ef', borderRadius: '10px' },
+  common: { primaryColor: '#2b63bf', primaryColorHover: '#2455a3', borderRadius: '9px' },
   Button: { borderRadiusMedium: '9px' },
 }
 const loggedIn = ref(false)

@@ -100,3 +100,64 @@ h1, h2, p { margin: 0; } h1 { font-size: 28px; letter-spacing: -.03em; } h2 { fo
 .wallet-action-row small { display: block; color: #78869c; font-size: 11px; margin-top: 4px; }
 .wallet-status-row > div { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 5px; }
 .wallet-review-note { border-left: 3px solid #d9e4ff; }
+
+/* Visual refinement: restrained slate palette, one blue action color, and clearer type hierarchy. */
+:root { font-family: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', Inter, system-ui, sans-serif; color: #1f2937; background: #f4f6f8; font-weight: 450; }
+body { background: #f4f6f8; color: #1f2937; letter-spacing: .005em; }
+.app-shell { background: #f4f6f8; }
+.sidebar { background: #182230; border-right: 1px solid #2c394a; }
+.side-brand { padding-bottom: 22px; }
+.brand-mark { background: #356bd2; box-shadow: 0 6px 14px rgba(31, 74, 157, .28); }
+.agent-chip { background: #202d3e; border-color: #344256; }
+.nav-item.active { background: #356bd2; box-shadow: none; }
+.nav-item:hover { background: #26364a; }
+.topbar { background: #fff; border-bottom: 1px solid #e1e6ed; }
+.content-area { background: #f4f6f8; }
+.section-head, .welcome-row { margin-bottom: 20px; }
+.section-head h1, .welcome-row h1 { color: #1e293b; font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
+.muted { color: #64748b; }
+.n-card { border-color: #e1e6ed !important; box-shadow: 0 2px 8px rgba(30, 41, 59, .035); }
+.n-card-header { color: #334155; font-weight: 650; }
+.table-section-label { border-left-color: #64748b; background: #eef2f6; }
+.table-section-label strong { color: #334155; font-weight: 700; }
+.table-section-label span { color: #64748b; }
+.filter-card, .table-card, .rules-card, .filter-card-emphasis, .table-card-emphasis { border-color: #d8e0ea !important; box-shadow: 0 3px 10px rgba(30, 41, 59, .045); }
+.filter-card-emphasis { background: #fbfcfd; }
+.agent-focus-grid .n-card, .stat-grid .n-card { background: #fff; }
+.focus-icon, .focus-icon.blue { background: #64748b; }
+.focus-icon.green { background: #3f8f7b; }
+.agent-table-head, .player-table-head, .plan-table-head { color: #64748b; background: #f1f4f7; border-bottom-color: #dfe5ec; font-weight: 700; }
+.agent-table-row, .player-table-row, .plan-table-row, .report-row, .log-table-row { border-bottom-color: #e7ebf0; color: #334155; }
+.account-link, .code-text { color: #2b63bf; }
+.positive { color: #21866e !important; }
+.negative { color: #be4c59 !important; }
+.profile-panel { border-color: #dce3eb; box-shadow: 0 3px 12px rgba(30, 41, 59, .05); }
+.profile-fields { border-color: #e1e6ed; }
+.profile-fields > div, .detail-list-row { border-bottom-color: #e8edf2; }
+.agent-info-panel, .auth-page-card { border-color: #d8e0ea; background: #fff; box-shadow: 0 3px 12px rgba(30, 41, 59, .04); }
+.agent-stat-grid > div, .auth-page-grid > div, .auth-admin-grid > div { background: #f3f6f9; }
+.agent-info-rule, .auth-warning { border-color: #e5d5ae; background: #fffaf0; }
+.detail-tabs { border-bottom-color: #dfe5ec; }
+.detail-tabs button { color: #64748b; }
+.detail-tabs button.active { color: #2b63bf; border-bottom-color: #2b63bf; }
+.wallet-action-row { border-color: #d8e0ea; background: #f3f6f9 !important; }
+.mode-config-card { border-color: #d8e0ea; background: #f5f7fa; }
+.toast { box-shadow: 0 8px 22px rgba(30, 41, 59, .12); }
+.content-area { font-size: 14px; }
+.section-head h1, .welcome-row h1 { font-size: 26px; }
+.section-head p, .welcome-row .muted { font-size: 14px; color: #64748b; }
+.nav-title { color: #8290a5; font-size: 11px; }
+.nav-item { color: #c3ccda; font-size: 14px; }
+.role-switcher > span { color: #9aa8bb; font-size: 11px; }
+.role-banner { background: #f8fafc; border-color: #d9e1ea; color: #53657b; }
+.role-banner strong { color: #2b63bf; }
+.table-section-label { margin-top: 22px; padding: 12px 14px 10px; }
+.table-section-label strong { font-size: 16px; }
+.table-section-label span { font-size: 12px; }
+.filter-row { gap: 12px; }
+.agent-table-head, .player-table-head, .plan-table-head { font-size: 12px; }
+.agent-table-row, .player-table-row, .plan-table-row { font-size: 13px; }
+.focus-icon, .focus-icon.blue, .focus-icon.green { background: #64748b; }
+.focus-card small { font-size: 12px; color: #64748b; }
+.focus-card span { font-size: 12px; color: #64748b; }
+.focus-card strong { font-size: 15px; }

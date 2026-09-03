@@ -766,7 +766,7 @@ function openTwoFactorAdminPage(row: AgentRow) {
 function canManageTwoFactor(row: AgentRow) {
   if (currentRole.value === '運營商') return true
   if (currentRole.value !== '總代理') return false
-  return row.path.startsWith(`${identity.value.account} >`)
+  return row.account === identity.value.account || row.path.startsWith(`${identityAgentPath.value} >`)
 }
 
 function viewTwoFactorQr() {

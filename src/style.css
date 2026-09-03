@@ -87,6 +87,7 @@ h1, h2, p { margin: 0; } h1 { font-size: 28px; letter-spacing: -.03em; } h2 { fo
 .agent-info-header strong { display: block; margin-top: 6px; font-size: 15px; }
 .agent-transfer-button { min-width: 126px; font-weight: 700; }
 .agent-transfer-button, .wallet-action-row .n-button { min-height: 34px; padding: 0 16px; border: 1px solid #2b63bf !important; border-radius: 8px; background: #2b63bf !important; color: #fff !important; font-weight: 600; box-shadow: none !important; }
+.agent-transfer-button .n-button__content, .wallet-action-row .n-button__content { color: #fff !important; }
 .agent-transfer-button:hover, .wallet-action-row .n-button:hover { border-color: #2455a3 !important; background: #2455a3 !important; color: #fff !important; }
 .profile-panel-head .n-button:last-child { font-size: 0; }
 .profile-panel-head .n-button:last-child::after { content: '狀態管理'; font-size: 12px; }

@@ -400,7 +400,15 @@ const selectedCycle = ref('每週')
 const notice = ref<{ type: 'success' | 'warning'; title: string; content: string } | null>(null)
 
 function toggleRelationshipSection(key: string) {
-  relationshipExpanded.value[key] = !relationshipExpanded.value[key]
+  const groups: Record<string, string[]> = {
+    totalAgents: ['totalAgents', 'totalAgentMoney', 'totalAgentBet'],
+    directAgents: ['directAgents', 'directAgentMoney', 'directAgentBet'],
+    totalPlayers: ['totalPlayers', 'totalPlayerMoney', 'totalPlayerBet'],
+    directPlayers: ['directPlayers', 'directPlayerMoney', 'directPlayerBet'],
+  }
+  const groupKey = Object.keys(groups).find((name) => groups[name].includes(key)) || key
+  const next = !relationshipExpanded.value[groupKey]
+  ;(groups[groupKey] || [key]).forEach((item) => { relationshipExpanded.value[item] = next })
 }
 
 function defaultCommissionConfig(): CommissionConfig {

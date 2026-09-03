@@ -85,6 +85,12 @@ h1, h2, p { margin: 0; } h1 { font-size: 28px; letter-spacing: -.03em; } h2 { fo
 .agent-info-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .agent-info-header span, .agent-stat-grid span { display: block; color: #8490a3; font-size: 11px; }
 .agent-info-header strong { display: block; margin-top: 6px; font-size: 15px; }
+.agent-transfer-button { min-width: 126px; font-weight: 700; }
+.transfer-preview, .transfer-path-summary { margin-top: 16px; padding: 14px 16px; border: 1px solid #d9e4f5; border-radius: 10px; background: #f7faff; display: flex; flex-direction: column; gap: 6px; }
+.transfer-preview-title { color: #315fca; font-size: 12px; font-weight: 700; }
+.transfer-preview strong, .transfer-path-summary strong { color: #253653; font-size: 13px; line-height: 1.5; }
+.transfer-preview span, .transfer-path-summary span { color: #8490a3; font-size: 11px; }
+.transfer-path-summary { display: grid; grid-template-columns: 90px 1fr; align-items: center; column-gap: 12px; row-gap: 8px; }
 .pending-transfer { margin: 8px 0 0; color: #bd7415; font-size: 12px; }
 .agent-stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .agent-stat-grid > div { padding: 14px; border-radius: 10px; background: #f4f7fc; }

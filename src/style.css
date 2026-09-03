@@ -155,6 +155,13 @@ body { background: #f4f6f8; color: #1f2937; letter-spacing: .005em; }
 .table-section-label strong { font-size: 16px; }
 .table-section-label span { font-size: 12px; }
 .filter-row { gap: 12px; }
+.filter-row-advanced { align-items: center; row-gap: 10px; }
+.filter-row-advanced .filter-field { width: 170px; }
+.filter-row-advanced .filter-account { width: 210px; }
+.filter-row-advanced .filter-date { width: 240px; }
+.filter-row-advanced .filter-parent { width: 190px; }
+.filter-row-advanced .filter-select { width: 135px; }
+.filter-row-advanced .filter-search-button { margin-left: auto; min-width: 84px; }
 .agent-table-head, .player-table-head, .plan-table-head { font-size: 12px; }
 .agent-table-row, .player-table-row, .plan-table-row { font-size: 13px; }
 .focus-icon, .focus-icon.blue, .focus-icon.green { background: #64748b; }

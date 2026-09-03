@@ -65,6 +65,7 @@ interface AgentRow {
   walletBalance: number
   withdrawalEnabled?: boolean
   registerAt?: string
+  registerIp?: string
   lastLoginAt?: string
   lastLoginIp?: string
   directAgentCount?: number
@@ -154,9 +155,21 @@ const currentRole = ref<Role>('總代理')
 const scope = ref<Scope>('all')
 const search = ref('')
 const agentAccountSearch = ref('')
+const agentAccountDraft = ref('')
+const agentRegisterIp = ref('')
+const agentRegisterDateRange = ref<[number, number] | null>(null)
+const agentParentFilter = ref<string | null>(null)
+const agentScope = ref<Scope>('all')
+const agentScopeDraft = ref<Scope>('all')
 const agentLevelFilter = ref<string | null>(null)
 const agentStatusFilter = ref<string | null>(null)
 const agentCommissionFilter = ref<'佔成' | '返佣' | null>(null)
+const agentLevelDraft = ref<string | null>(null)
+const agentStatusDraft = ref<string | null>(null)
+const agentCommissionDraft = ref<'佔成' | '返佣' | null>(null)
+const agentParentDraft = ref<string | null>(null)
+const agentRegisterIpDraft = ref('')
+const agentRegisterDateRangeDraft = ref<[number, number] | null>(null)
 const showCreateAgent = ref(false)
 const newAgentAccount = ref('')
 const newAgentPoint = ref<number | null>(0)
@@ -191,6 +204,18 @@ const loginTwoFactorCode = ref('')
 const showPlayerDetail = ref(false)
 const showPlayerDetailModal = ref(false)
 const selectedPlayer = ref<PlayerRow | null>(null)
+const playerSearch = ref('')
+const playerRegisterIp = ref('')
+const playerRegisterDateRange = ref<[number, number] | null>(null)
+const playerParentFilter = ref<string | null>(null)
+const playerScope = ref<Scope>('all')
+const playerSearchDraft = ref('')
+const playerRegisterIpDraft = ref('')
+const playerRegisterDateRangeDraft = ref<[number, number] | null>(null)
+const playerParentDraft = ref<string | null>(null)
+const playerScopeDraft = ref<Scope>('all')
+const playerStatusFilter = ref<PlayerRow['status'] | null>(null)
+const playerStatusFilterDraft = ref<PlayerRow['status'] | null>(null)
 const playerDetailTab = ref<'basic' | 'wallet' | 'vip' | 'promotion' | 'audit' | 'asset' | 'game' | 'transfer' | 'invite' | 'agent'>('basic')
 const showPlayerEdit = ref(false)
 const showPlayerStatus = ref(false)
@@ -276,14 +301,14 @@ function agentPlanSummary(row: AgentRow) {
 }
 
 const agentRows = ref<AgentRow[]>([
-  { id: 'A-1001', uid: 'AG-10001', account: 'agent_taipei', displayName: '台北總代理', referralCode: 'AGT-TW-8F4K', phone: '0912345678', email: 'taipei@example.com', contactMethod: 'Line: @agent_taipei', twoFactor: '已啟用', twoFactorBoundAt: '2026-07-18 14:22:08', twoFactorRequired: true, level: '總代理', path: 'agent_taipei', currency: 'TWD', point: 6, children: 3, directAgentCount: 2, directPlayerCount: 2, totalAgentCount: 4, totalPlayerCount: 186, totalDeposit: 342800, totalEffectiveBet: 1284600, walletBalance: 28460, withdrawalEnabled: true, registerAt: '2026-07-18 14:22:08', lastLoginAt: '2026-09-02 11:00:00', lastLoginIp: '10.20.8.15', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
-  { id: 'A-1006', uid: 'AG-10121', account: 'agent_pnl', displayName: '佔成總代理', referralCode: 'AGT-TWD-PNL3', phone: '0922333444', email: 'pnl@example.com', contactMethod: 'Line: @agent_pnl', twoFactor: '未啟用', twoFactorBoundAt: '尚未綁定', twoFactorRequired: true, level: '總代理', path: 'agent_pnl', currency: 'TWD', point: 5, children: 6, walletBalance: 9740, withdrawalEnabled: true, registerAt: '2026-07-21 09:12:44', lastLoginAt: '2026-09-01 17:42:10', lastLoginIp: '10.20.8.66', status: '啟用', planId: 'PLAN-003', model: '佔成', cycle: '每月' },
-  { id: 'A-1002', uid: 'AG-10024', account: 'north_team', displayName: '北區團隊', referralCode: 'AGT-TW-NORTH', phone: '0987654321', email: 'north@example.com', contactMethod: 'Line: @north_team', twoFactor: '未啟用', twoFactorRequired: true, level: '一級代理', path: 'agent_taipei > north_team', currency: 'TWD', point: 4, children: 8, directAgentCount: 1, directPlayerCount: 1, totalAgentCount: 2, totalPlayerCount: 74, totalDeposit: 158600, totalEffectiveBet: 628400, walletBalance: 12680, withdrawalEnabled: true, registerAt: '2026-07-22 10:18:21', lastLoginAt: '2026-09-02 09:58:12', lastLoginIp: '10.20.8.42', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
-  { id: 'A-1003', uid: 'AG-10088', account: 'east_team', displayName: '東區團隊', referralCode: 'AGT-TW-EAST', phone: '0955123788', email: 'east@example.com', contactMethod: 'Email', twoFactor: '未啟用', twoFactorRequired: true, level: '一級代理', path: 'agent_taipei > east_team', currency: 'TWD', point: 3, children: 5, directAgentCount: 0, directPlayerCount: 1, totalAgentCount: 0, totalPlayerCount: 48, totalDeposit: 93600, totalEffectiveBet: 328400, walletBalance: 8340, withdrawalEnabled: true, registerAt: '2026-07-23 13:06:50', lastLoginAt: '2026-09-01 21:12:09', lastLoginIp: '10.20.8.78', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
-  { id: 'A-1004', uid: 'AG-10102', account: 'sub_partner_01', displayName: '合作夥伴 01', referralCode: 'AGT-TW-SUB01', phone: '0933123456', email: 'partner01@example.com', contactMethod: 'Line: @sub_partner_01', twoFactor: '未啟用', twoFactorRequired: true, level: '二級代理', path: 'agent_taipei > north_team > sub_partner_01', currency: 'TWD', point: 2, children: 2, directAgentCount: 0, directPlayerCount: 1, totalAgentCount: 0, totalPlayerCount: 21, totalDeposit: 46200, totalEffectiveBet: 164800, walletBalance: 4260, withdrawalEnabled: true, registerAt: '2026-07-25 16:32:04', lastLoginAt: '2026-08-31 19:04:33', lastLoginIp: '10.20.8.91', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
-  { id: 'A-1007', uid: 'AG-10131', account: 'north_l2', displayName: '北區二級代理', referralCode: 'AGT-TW-NL2', phone: '0911222333', email: 'north.l2@example.com', contactMethod: 'Line: @north_l2', twoFactor: '未啟用', twoFactorRequired: true, level: '二級代理', path: 'north_team > north_l2', currency: 'TWD', point: 2, children: 1, directAgentCount: 1, directPlayerCount: 2, totalAgentCount: 2, totalPlayerCount: 32, totalDeposit: 58200, totalEffectiveBet: 214800, walletBalance: 3560, withdrawalEnabled: true, registerAt: '2026-08-01 09:10:00', lastLoginAt: '2026-09-02 10:12:30', lastLoginIp: '10.20.8.101', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
-  { id: 'A-1008', uid: 'AG-10132', account: 'north_l3', displayName: '北區三級代理', referralCode: 'AGT-TW-NL3', phone: '0922444555', email: 'north.l3@example.com', contactMethod: 'Email', twoFactor: '未啟用', twoFactorRequired: true, level: '三級代理', path: 'north_team > north_l2 > north_l3', currency: 'TWD', point: 1, children: 1, directAgentCount: 1, directPlayerCount: 1, totalAgentCount: 1, totalPlayerCount: 18, totalDeposit: 32400, totalEffectiveBet: 118600, walletBalance: 2180, withdrawalEnabled: true, registerAt: '2026-08-08 14:24:10', lastLoginAt: '2026-09-01 16:40:18', lastLoginIp: '10.20.8.102', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
-  { id: 'A-1009', uid: 'AG-10133', account: 'north_l4', displayName: '北區四級代理', referralCode: 'AGT-TW-NL4', phone: '0933666777', email: 'north.l4@example.com', contactMethod: 'Line: @north_l4', twoFactor: '未啟用', twoFactorRequired: true, level: '四級代理', path: 'north_team > north_l2 > north_l3 > north_l4', currency: 'TWD', point: 0.5, children: 0, directAgentCount: 0, directPlayerCount: 4, totalAgentCount: 0, totalPlayerCount: 4, totalDeposit: 9800, totalEffectiveBet: 42600, walletBalance: 960, withdrawalEnabled: true, registerAt: '2026-08-15 18:08:42', lastLoginAt: '2026-09-02 08:15:47', lastLoginIp: '10.20.8.103', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
+  { id: 'A-1001', uid: 'AG-10001', account: 'agent_taipei', displayName: '台北總代理', referralCode: 'AGT-TW-8F4K', phone: '0912345678', email: 'taipei@example.com', contactMethod: 'Line: @agent_taipei', twoFactor: '已啟用', twoFactorBoundAt: '2026-07-18 14:22:08', twoFactorRequired: true, level: '總代理', path: 'agent_taipei', currency: 'TWD', point: 6, children: 3, directAgentCount: 2, directPlayerCount: 2, totalAgentCount: 4, totalPlayerCount: 186, totalDeposit: 342800, totalEffectiveBet: 1284600, walletBalance: 28460, withdrawalEnabled: true, registerAt: '2026-07-18 14:22:08', registerIp: '10.20.8.15', lastLoginAt: '2026-09-02 11:00:00', lastLoginIp: '10.20.8.15', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
+  { id: 'A-1006', uid: 'AG-10121', account: 'agent_pnl', displayName: '佔成總代理', referralCode: 'AGT-TWD-PNL3', phone: '0922333444', email: 'pnl@example.com', contactMethod: 'Line: @agent_pnl', twoFactor: '未啟用', twoFactorBoundAt: '尚未綁定', twoFactorRequired: true, level: '總代理', path: 'agent_pnl', currency: 'TWD', point: 5, children: 6, walletBalance: 9740, withdrawalEnabled: true, registerAt: '2026-07-21 09:12:44', registerIp: '10.20.8.66', lastLoginAt: '2026-09-01 17:42:10', lastLoginIp: '10.20.8.66', status: '啟用', planId: 'PLAN-003', model: '佔成', cycle: '每月' },
+  { id: 'A-1002', uid: 'AG-10024', account: 'north_team', displayName: '北區團隊', referralCode: 'AGT-TW-NORTH', phone: '0987654321', email: 'north@example.com', contactMethod: 'Line: @north_team', twoFactor: '未啟用', twoFactorRequired: true, level: '一級代理', path: 'agent_taipei > north_team', currency: 'TWD', point: 4, children: 8, directAgentCount: 1, directPlayerCount: 1, totalAgentCount: 2, totalPlayerCount: 74, totalDeposit: 158600, totalEffectiveBet: 628400, walletBalance: 12680, withdrawalEnabled: true, registerAt: '2026-07-22 10:18:21', registerIp: '10.20.8.42', lastLoginAt: '2026-09-02 09:58:12', lastLoginIp: '10.20.8.42', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
+  { id: 'A-1003', uid: 'AG-10088', account: 'east_team', displayName: '東區團隊', referralCode: 'AGT-TW-EAST', phone: '0955123788', email: 'east@example.com', contactMethod: 'Email', twoFactor: '未啟用', twoFactorRequired: true, level: '一級代理', path: 'agent_taipei > east_team', currency: 'TWD', point: 3, children: 5, directAgentCount: 0, directPlayerCount: 1, totalAgentCount: 0, totalPlayerCount: 48, totalDeposit: 93600, totalEffectiveBet: 328400, walletBalance: 8340, withdrawalEnabled: true, registerAt: '2026-07-23 13:06:50', registerIp: '10.20.8.78', lastLoginAt: '2026-09-01 21:12:09', lastLoginIp: '10.20.8.78', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
+  { id: 'A-1004', uid: 'AG-10102', account: 'sub_partner_01', displayName: '合作夥伴 01', referralCode: 'AGT-TW-SUB01', phone: '0933123456', email: 'partner01@example.com', contactMethod: 'Line: @sub_partner_01', twoFactor: '未啟用', twoFactorRequired: true, level: '二級代理', path: 'agent_taipei > north_team > sub_partner_01', currency: 'TWD', point: 2, children: 2, directAgentCount: 0, directPlayerCount: 1, totalAgentCount: 0, totalPlayerCount: 21, totalDeposit: 46200, totalEffectiveBet: 164800, walletBalance: 4260, withdrawalEnabled: true, registerAt: '2026-07-25 16:32:04', registerIp: '10.20.8.91', lastLoginAt: '2026-08-31 19:04:33', lastLoginIp: '10.20.8.91', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
+  { id: 'A-1007', uid: 'AG-10131', account: 'north_l2', displayName: '北區二級代理', referralCode: 'AGT-TW-NL2', phone: '0911222333', email: 'north.l2@example.com', contactMethod: 'Line: @north_l2', twoFactor: '未啟用', twoFactorRequired: true, level: '二級代理', path: 'agent_taipei > north_team > north_l2', currency: 'TWD', point: 2, children: 1, directAgentCount: 1, directPlayerCount: 2, totalAgentCount: 2, totalPlayerCount: 32, totalDeposit: 58200, totalEffectiveBet: 214800, walletBalance: 3560, withdrawalEnabled: true, registerAt: '2026-08-01 09:10:00', registerIp: '10.20.8.101', lastLoginAt: '2026-09-02 10:12:30', lastLoginIp: '10.20.8.101', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
+  { id: 'A-1008', uid: 'AG-10132', account: 'north_l3', displayName: '北區三級代理', referralCode: 'AGT-TW-NL3', phone: '0922444555', email: 'north.l3@example.com', contactMethod: 'Email', twoFactor: '未啟用', twoFactorRequired: true, level: '三級代理', path: 'agent_taipei > north_team > north_l2 > north_l3', currency: 'TWD', point: 1, children: 1, directAgentCount: 1, directPlayerCount: 1, totalAgentCount: 1, totalPlayerCount: 18, totalDeposit: 32400, totalEffectiveBet: 118600, walletBalance: 2180, withdrawalEnabled: true, registerAt: '2026-08-08 14:24:10', registerIp: '10.20.8.102', lastLoginAt: '2026-09-01 16:40:18', lastLoginIp: '10.20.8.102', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
+  { id: 'A-1009', uid: 'AG-10133', account: 'north_l4', displayName: '北區四級代理', referralCode: 'AGT-TW-NL4', phone: '0933666777', email: 'north.l4@example.com', contactMethod: 'Line: @north_l4', twoFactor: '未啟用', twoFactorRequired: true, level: '四級代理', path: 'agent_taipei > north_team > north_l2 > north_l3 > north_l4', currency: 'TWD', point: 0.5, children: 0, directAgentCount: 0, directPlayerCount: 4, totalAgentCount: 0, totalPlayerCount: 4, totalDeposit: 9800, totalEffectiveBet: 42600, walletBalance: 960, withdrawalEnabled: true, registerAt: '2026-08-15 18:08:42', registerIp: '10.20.8.103', lastLoginAt: '2026-09-02 08:15:47', lastLoginIp: '10.20.8.103', status: '啟用', planId: 'PLAN-001', model: '返佣', cycle: '每週' },
 ])
 
 const commissionPlans = ref<CommissionPlan[]>([
@@ -312,21 +337,56 @@ const navGroups = computed(() => [
 ] as const)
 
 const identity = computed(() => currentRole.value === '運營商' ? { account: 'operator_demo', label: '運營商', currency: '多幣別' } : currentRole.value === '總代理' ? { account: 'agent_taipei', label: '總代理', currency: 'TWD' } : { account: 'north_team', label: '一般代理', currency: 'TWD' })
+const identityAgentPath = computed(() => agentRows.value.find((row) => row.account === identity.value.account)?.path ?? identity.value.account)
 const canCreateAgent = computed(() => currentRole.value !== '運營商' || currentRole.value === '運營商')
 const createTitle = computed(() => currentRole.value === '運營商' ? '開設總代理' : '開設下級代理')
 const pageTitle = computed(() => navGroups.value.flatMap((group) => group.items).find((item) => item.key === activeKey.value)?.label ?? '營運概覽')
+function inDateRange(value: string, range: [number, number] | null) {
+  if (!range) return true
+  const timestamp = new Date(value.replace(' ', 'T')).getTime()
+  return timestamp >= range[0] && timestamp <= range[1] + 86400000 - 1
+}
+
+const visibleAgentFilterRows = computed(() => agentRows.value.filter((row) => canViewAgent(row)))
+const agentParentOptions = computed(() => visibleAgentFilterRows.value
+  .filter((row) => agentRows.value.some((child) => canViewAgent(child) && child.path.startsWith(`${row.path} >`)))
+  .map((row) => ({ label: `${row.account}（${row.level}）`, value: row.account })))
+const playerParentOptions = computed(() => visibleAgentFilterRows.value
+  .map((row) => ({ label: `${row.account}（${row.level}）`, value: row.account })))
+
 const filteredAgents = computed(() => agentRows.value.filter((row) => {
-  const directAgent = currentRole.value === '運營商' ? row.level === '總代理' : row.account === identity.value.account || row.path === `${identity.value.account} > ${row.account}`
-  const inScope = canViewAgent(row) && (scope.value === 'all' || directAgent)
+  const selectedParent = agentParentFilter.value ? agentRows.value.find((agent) => agent.account === agentParentFilter.value) : null
+  const basePath = selectedParent?.path || identityAgentPath.value
+  const directAgent = currentRole.value === '運營商'
+    ? (selectedParent ? row.path === `${basePath} > ${row.account}` : row.level === '總代理')
+    : (selectedParent ? row.path === `${basePath} > ${row.account}` : row.account === identity.value.account || row.path === `${basePath} > ${row.account}`)
+  const underParent = selectedParent ? row.path.startsWith(`${basePath} >`) : canViewAgent(row)
+  const inScope = underParent && (agentScope.value === 'all' || directAgent)
   const inLevel = !agentLevelFilter.value || row.level === agentLevelFilter.value
   const inStatus = !agentStatusFilter.value || row.status === agentStatusFilter.value
   const inCommission = !agentCommissionFilter.value || row.model === agentCommissionFilter.value
-  return inScope && inLevel && inStatus && inCommission && `${row.account}${row.path}`.toLowerCase().includes(agentAccountSearch.value.toLowerCase())
+  const query = agentAccountSearch.value.trim().toLowerCase()
+  const ipQuery = agentRegisterIp.value.trim().toLowerCase()
+  return inScope && inLevel && inStatus && inCommission
+    && (!query || `${row.account}${row.path}`.toLowerCase().includes(query))
+    && (!ipQuery || (row.registerIp ?? '').toLowerCase().includes(ipQuery))
+    && inDateRange(row.registerAt ?? '', agentRegisterDateRange.value)
 }))
 const filteredPlayers = computed(() => playerRows.value.filter((row) => {
-  const visibleToRole = currentRole.value === '運營商' || row.path.startsWith(`${identity.value.account} >`)
-  const inScope = visibleToRole && (scope.value === 'all' || (currentRole.value === '運營商' ? row.path.split(' > ').length === 2 : row.path.split(' > ').length <= 3))
-  return inScope && `${row.id}${row.account}${row.displayName}${row.path}`.toLowerCase().includes(search.value.toLowerCase())
+  const selectedParent = playerParentFilter.value ? agentRows.value.find((agent) => agent.account === playerParentFilter.value) : null
+  const basePath = selectedParent?.path || identityAgentPath.value
+  const visibleToRole = currentRole.value === '運營商' || row.path.startsWith(`${identityAgentPath.value} >`)
+  const directPlayer = selectedParent
+    ? row.path === `${basePath} > ${row.account}`
+    : (currentRole.value === '運營商' ? row.path.split(' > ').length === 2 : row.path.startsWith(`${basePath} >`) && row.path.split(' > ').length === basePath.split(' > ').length + 1)
+  const inScope = (selectedParent ? row.path.startsWith(`${basePath} >`) : visibleToRole) && (playerScope.value === 'all' || directPlayer)
+  const query = playerSearch.value.trim().toLowerCase()
+  const ipQuery = playerRegisterIp.value.trim().toLowerCase()
+  return inScope
+    && (!query || `${row.id}${row.account}${row.displayName}${row.path}`.toLowerCase().includes(query))
+    && (!ipQuery || row.registerIp.toLowerCase().includes(ipQuery))
+    && (!playerStatusFilter.value || row.status === playerStatusFilter.value)
+    && inDateRange(row.registerAt, playerRegisterDateRange.value)
 }))
 const planOptions = computed(() => commissionPlans.value.filter((plan) => plan.status === '啟用' && (currentRole.value === '運營商' || plan.model === lineModel.value)).map((plan) => ({ label: `${plan.name}（${plan.promoCode}／${plan.model}／${plan.cycle}）`, value: plan.id })))
 const selectedPlan = computed(() => commissionPlans.value.find((plan) => plan.id === draftPlanId.value) ?? commissionPlans.value[0])
@@ -368,12 +428,12 @@ const filteredLogs = computed(() => logs.value.filter((log) => {
 
 function canViewAgent(row: AgentRow) {
   if (currentRole.value === '運營商') return true
-  return row.account === identity.value.account || row.path.startsWith(`${identity.value.account} >`)
+  return row.account === identity.value.account || row.path.startsWith(`${identityAgentPath.value} >`)
 }
 
 function canManageAgent(row: AgentRow) {
   if (currentRole.value === '運營商') return true
-  return currentRole.value === '總代理' && row.path.startsWith(`${identity.value.account} >`)
+  return currentRole.value === '總代理' && row.path.startsWith(`${identityAgentPath.value} >`)
 }
 
 function login() {
@@ -431,15 +491,59 @@ function logout() {
   activeKey.value = 'dashboard'
 }
 
+function applyAgentFilters() {
+  agentAccountSearch.value = agentAccountDraft.value
+  agentRegisterIp.value = agentRegisterIpDraft.value
+  agentRegisterDateRange.value = agentRegisterDateRangeDraft.value
+  agentParentFilter.value = agentParentDraft.value
+  agentScope.value = agentScopeDraft.value
+  agentLevelFilter.value = agentLevelDraft.value
+  agentStatusFilter.value = agentStatusDraft.value
+  agentCommissionFilter.value = agentCommissionDraft.value
+}
+
+function applyPlayerFilters() {
+  playerSearch.value = playerSearchDraft.value
+  playerRegisterIp.value = playerRegisterIpDraft.value
+  playerRegisterDateRange.value = playerRegisterDateRangeDraft.value
+  playerParentFilter.value = playerParentDraft.value
+  playerScope.value = playerScopeDraft.value
+  playerStatusFilter.value = playerStatusFilterDraft.value
+}
+
 function selectNav(key: string) {
   activeKey.value = key as NavKey
   if (key === 'agents') showAgentDetail.value = false
   if (key === 'players') showPlayerDetail.value = false
   search.value = ''
+  playerSearch.value = ''
+  playerSearchDraft.value = ''
+  playerRegisterIp.value = ''
+  playerRegisterIpDraft.value = ''
+  playerRegisterDateRange.value = null
+  playerRegisterDateRangeDraft.value = null
+  playerParentFilter.value = null
+  playerParentDraft.value = null
+  playerScope.value = 'all'
+  playerScopeDraft.value = 'all'
+  playerStatusFilter.value = null
+  playerStatusFilterDraft.value = null
   agentAccountSearch.value = ''
+  agentAccountDraft.value = ''
+  agentRegisterIp.value = ''
+  agentRegisterIpDraft.value = ''
+  agentRegisterDateRange.value = null
+  agentRegisterDateRangeDraft.value = null
+  agentParentFilter.value = null
+  agentParentDraft.value = null
+  agentScope.value = 'all'
+  agentScopeDraft.value = 'all'
   agentLevelFilter.value = null
+  agentLevelDraft.value = null
   agentStatusFilter.value = null
+  agentStatusDraft.value = null
   agentCommissionFilter.value = null
+  agentCommissionDraft.value = null
 }
 
 function deactivateAgent(row: AgentRow) {
@@ -1015,7 +1119,7 @@ const playerColumns = computed(() => [
               <div class="role-banner"><strong>{{ identity.label }}可執行範圍</strong><span>{{ currentRole === '運營商' ? '建立總代理、設定傭金模式與結算週期，查看全平台代理網絡。' : currentRole === '總代理' ? '建立直屬代理、套用同一代理線傭金模式，查看全部下級與各代理線報表。' : '建立直屬下級代理、套用上級提供的傭金模式，僅查看自身代理線資料。' }}</span></div>
               <NCard title="2FA 全域設定" class="security-card agent-security-card"><div class="security-setting"><div><strong>新代理預設啟用 Google Auth</strong><p class="modal-help">設定新代理首次登入時是否需要綁定 Google Auth。僅運營商可修改。</p></div><NSwitch :value="twoFactorGlobalEnabled" :disabled="currentRole !== '運營商'" @update:value="toggleTwoFactorGlobal" /></div></NCard>
               <div class="agent-focus-grid"><NCard class="focus-card"><div class="focus-icon">A</div><div><span>目前登入角色</span><strong>{{ identity.account }}</strong><small>{{ identity.label }} · {{ identity.currency }} · 可查看{{ currentRole === '運營商' ? '全平台' : '自身代理線' }}</small></div></NCard><NCard class="focus-card"><div class="focus-icon blue">%</div><div><span>傭金方案</span><strong>兩種模式可配置</strong><small>佔成／返佣分開管理，代理僅套用方案。</small></div></NCard><NCard class="focus-card"><div class="focus-icon green">↳</div><div><span>代理線狀態</span><strong>{{ currentRole === '運營商' ? '12 條 · 多幣別' : '3 條 · 幣別一致' }}</strong><small>同一條代理線內代理與玩家必須使用相同幣別。</small></div></NCard></div>
-              <div class="table-section-label"><strong>篩選欄位</strong><span>只顯示目前角色可查看的下級代理線</span></div><NCard class="filter-card filter-card-emphasis"><div class="filter-row"><div class="scope-toggle"><button :class="{ active: scope === 'direct' }" @click="scope = 'direct'">只看直屬</button><button :class="{ active: scope === 'all' }" @click="scope = 'all'">查看全部下級</button></div><NInput v-model:value="agentAccountSearch" clearable placeholder="搜尋下級代理帳號" style="width: 220px"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput><NSelect v-model:value="agentLevelFilter" clearable placeholder="代理層級" :options="[{label:'總代理',value:'總代理'},{label:'一級代理',value:'一級代理'},{label:'二級代理',value:'二級代理'},{label:'三級代理',value:'三級代理'},{label:'四級代理',value:'四級代理'}]" style="width: 140px" /><NSelect v-model:value="agentCommissionFilter" clearable placeholder="傭金模式" :options="[{label:'佔成',value:'佔成'},{label:'返佣',value:'返佣'}]" style="width: 130px" /><NSelect v-model:value="agentStatusFilter" clearable placeholder="狀態" :options="[{label:'啟用',value:'啟用'},{label:'停用',value:'停用'}]" style="width: 120px" /></div></NCard>
+              <div class="table-section-label"><strong>篩選欄位</strong><span>設定條件後點擊搜尋；上級代理僅能選擇目前角色可查看的代理線</span></div><NCard class="filter-card filter-card-emphasis"><div class="filter-row filter-row-advanced"><div class="scope-toggle"><button :class="{ active: agentScopeDraft === 'direct' }" @click="agentScopeDraft = 'direct'">只看直屬</button><button :class="{ active: agentScopeDraft === 'all' }" @click="agentScopeDraft = 'all'">查看全下級</button></div><NInput v-model:value="agentAccountDraft" clearable placeholder="搜尋代理帳號" class="filter-field filter-account"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput><NInput v-model:value="agentRegisterIpDraft" clearable placeholder="註冊 IP" class="filter-field"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput><NDatePicker v-model:value="agentRegisterDateRangeDraft" type="daterange" clearable format="yyyy-MM-dd" start-placeholder="註冊起日" end-placeholder="註冊迄日" placeholder="註冊時間區段" class="filter-date" /><NSelect v-model:value="agentParentDraft" clearable placeholder="上級代理" :options="agentParentOptions" class="filter-parent" /><NSelect v-model:value="agentLevelDraft" clearable placeholder="代理層級" :options="[{label:'總代理',value:'總代理'},{label:'一級代理',value:'一級代理'},{label:'二級代理',value:'二級代理'},{label:'三級代理',value:'三級代理'},{label:'四級代理',value:'四級代理'}]" class="filter-select" /><NSelect v-model:value="agentCommissionDraft" clearable placeholder="傭金模式" :options="[{label:'佔成',value:'佔成'},{label:'返佣',value:'返佣'}]" class="filter-select" /><NSelect v-model:value="agentStatusDraft" clearable placeholder="狀態" :options="[{label:'啟用',value:'啟用'},{label:'停用',value:'停用'}]" class="filter-select" /><NButton type="primary" class="filter-search-button" @click="applyAgentFilters"><template #icon><NIcon><SearchOutline /></NIcon></template>搜尋</NButton></div></NCard>
                <div class="table-section-label"><strong>代理資料</strong><span>共 {{ filteredAgents.length }} 筆；帳號查詢僅搜尋目前角色可見的下級代理線</span></div><NCard :bordered="false" class="table-card table-card-emphasis"><div class="agent-table-wrap"><div class="agent-table"><div class="agent-table-head"><span>代理帳號</span><span>層級</span><span>幣別</span><span>傭金模式</span><span>結算週期</span><span>下級數</span><span>傭金錢包餘額</span><span>狀態</span><span>傭金方案</span><span>模式設定</span><span>操作</span></div><div v-for="row in filteredAgents" :key="row.id" class="agent-table-row"><button class="account-link" @click="openAgent(row)">{{ row.account }}</button><span>{{ row.level }}</span><span>{{ row.currency }}</span><NTag size="small" :type="row.model === '佔成' ? 'warning' : 'success'" round>{{ row.model ?? '沿用上級' }}</NTag><span>{{ row.cycle ?? '沿用上級' }}</span><span>{{ row.children }}</span><strong class="wallet-value">{{ row.currency }} {{ row.walletBalance.toLocaleString() }}</strong><NTag size="small" :type="row.status === '啟用' ? 'success' : 'error'" round>{{ row.status }}</NTag><div><strong>{{ planForAgent(row)?.name ?? '未套用' }}</strong><small class="mode-summary">{{ agentPlanSummary(row) }}</small></div><span class="mode-summary">{{ row.model === '佔成' ? '輸贏－行政成本' : row.model === '返佣' ? '有效投注額' : '-' }}</span><div class="table-actions"><NButton quaternary size="small" @click="openAgent(row)">查看詳情</NButton><NButton quaternary size="small" @click="deactivateAgent(row)">{{ row.status === '啟用' ? '停用' : '啟用' }}</NButton></div></div></div></div><div class="table-hint">傭金錢包餘額為目前可提領金額；方案欄位顯示代理目前套用的推廣碼方案，模式設定摘要可於「傭金方案」查看完整規則。</div></NCard>
               </template>
               <template v-else-if="selectedAgent">
@@ -1034,7 +1138,7 @@ const playerColumns = computed(() => [
             <section v-else-if="activeKey === 'players'">
               <template v-if="!showPlayerDetail">
               <div class="section-head"><div><h1>玩家管理</h1><p class="muted">完整呈現運營後台玩家列表；代理相關路徑於玩家詳情的「代理關係」分頁查看。</p></div><NTag :type="canOperatePlayers ? 'warning' : 'info'" round>{{ canOperatePlayers ? '運營商可操作' : '代理唯讀' }}</NTag></div>
-              <NCard class="filter-card"><div class="filter-row"><div class="scope-toggle"><button :class="{ active: scope === 'direct' }" @click="scope = 'direct'">直屬玩家</button><button :class="{ active: scope === 'all' }" @click="scope = 'all'">全部下級玩家</button></div><NInput v-model:value="search" clearable placeholder="搜尋玩家帳號或路徑" class="search-input"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput></div></NCard>
+              <div class="table-section-label"><strong>篩選欄位</strong><span>設定條件後點擊搜尋；上級代理僅能查詢目前角色可查看的代理線</span></div><NCard class="filter-card filter-card-emphasis"><div class="filter-row filter-row-advanced"><div class="scope-toggle"><button :class="{ active: playerScopeDraft === 'direct' }" @click="playerScopeDraft = 'direct'">只看直屬</button><button :class="{ active: playerScopeDraft === 'all' }" @click="playerScopeDraft = 'all'">查看全下級</button></div><NInput v-model:value="playerSearchDraft" clearable placeholder="搜尋玩家帳號或路徑" class="filter-field filter-account"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput><NInput v-model:value="playerRegisterIpDraft" clearable placeholder="註冊 IP" class="filter-field"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput><NDatePicker v-model:value="playerRegisterDateRangeDraft" type="daterange" clearable format="yyyy-MM-dd" start-placeholder="註冊起日" end-placeholder="註冊迄日" placeholder="註冊時間區段" class="filter-date" /><NSelect v-model:value="playerParentDraft" clearable placeholder="上級代理" :options="playerParentOptions" class="filter-parent" /><NSelect v-model:value="playerStatusFilterDraft" clearable placeholder="玩家狀態" :options="playerStatusOptions" class="filter-select" /><NButton type="primary" class="filter-search-button" @click="applyPlayerFilters"><template #icon><NIcon><SearchOutline /></NIcon></template>搜尋</NButton></div></NCard>
               <div class="table-section-label"><strong>資料顯示欄位</strong><span>點擊玩家帳號或右側「查看詳情」即可開啟完整玩家詳情</span></div><NCard :bordered="false" class="table-card"><div class="player-table-wrap"><div class="player-table"><div class="player-table-head"><span>玩家 ID</span><span>玩家帳號</span><span>顯示名稱</span><span>標籤</span><span>RTP</span><span>VIP 等級</span><span>帳號狀態</span><span>在線狀態</span><span>註冊時間</span><span>操作</span></div><div v-for="row in filteredPlayers" :key="row.id" class="player-table-row"><span>{{ row.id }}</span><button class="account-link" @click="openPlayer(row)">{{ row.account }}</button><span>{{ row.displayName }}</span><div class="table-tags"><NTag v-for="tag in row.tags" :key="tag" size="small" round :type="tag === '風控關注' ? 'warning' : 'default'">{{ tag }}</NTag></div><span :class="row.rtp < 100 ? 'positive' : 'negative'">{{ row.rtp }}%</span><span>{{ row.vipLevel }}</span><NTag size="small" round :type="playerStatusType(row.status)">{{ row.status }}</NTag><NTag size="small" round :type="row.isOnline ? 'success' : 'default'">{{ row.isOnline ? '在線' : '離線' }}</NTag><span>{{ row.registerAt }}</span><div class="table-actions"><NButton size="small" secondary type="primary" @click="openPlayer(row)">查看詳情</NButton><NButton v-if="canOperatePlayers" size="small" quaternary @click="transferPlayer(row)">轉線</NButton><NButton v-if="canOperatePlayers" size="small" quaternary @click="managePlayerStatus(row)">狀態管理</NButton><NButton v-if="canOperatePlayers" size="small" quaternary @click="editPlayer(row)">編輯資料</NButton></div></div></div></div><div class="table-hint">目前顯示 {{ filteredPlayers.length }} 位玩家；點擊「查看詳情」可查看基本資料、VIP 資訊、資金帳變與代理關係。</div><div class="privacy-note">權限提示：總代理與一般代理只能查看玩家資料；轉線、狀態管理、編輯資料僅由運營商執行。隱私欄位依運營後台規則遮罩。</div></NCard>
               </template>
               <template v-else-if="selectedPlayer">

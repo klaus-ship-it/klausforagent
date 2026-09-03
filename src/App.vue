@@ -153,10 +153,47 @@ interface CommissionWithdrawalRecord {
   netAmount: number
   balanceBefore: number
   balanceAfter: number
-  status: '待結算' | '已入帳' | '待審核' | '審核中' | '已撥款' | '已駁回'
+  status: '待處理' | '處理中' | '成功' | '失敗'
   bank: string
   reviewAt: string
   reviewer: string
+  remark: string
+  bankAccount?: string
+  bankHolder?: string
+  plan?: string
+  settlementBase?: string
+  systemResult?: string
+}
+
+type CommissionOrderStatus = '待處理' | '處理中' | '成功' | '失敗'
+
+interface CommissionWithdrawalOrder {
+  id: string
+  account: string
+  currency: string
+  amount: number
+  status: CommissionOrderStatus
+  createdAt: string
+  updatedAt: string
+  bankName: string
+  bankAccount: string
+  bankHolder: string
+  failureReason?: string
+  processor?: string
+}
+
+interface CommissionPayoutRecord {
+  id: string
+  account: string
+  currency: string
+  amount: number
+  status: CommissionOrderStatus
+  createdAt: string
+  updatedAt: string
+  plan: string
+  cycle: string
+  settlementBase: string
+  systemResult: string
   remark: string
 }
 
@@ -294,6 +331,32 @@ const agentWithdrawalType = ref<CommissionWithdrawalRecord['recordType'] | null>
 const agentWithdrawalDateRange = ref<[number, number] | null>(null)
 const showCommissionRecordDetail = ref(false)
 const selectedCommissionRecord = ref<CommissionWithdrawalRecord | null>(null)
+const withdrawalOrders = ref<CommissionWithdrawalOrder[]>([
+  { id: 'WD-20260902-001', account: 'agent_taipei', currency: 'TWD', amount: 12000, status: '待處理', createdAt: '2026-09-02 11:26:08', updatedAt: '2026-09-02 11:26:08', bankName: '台新銀行', bankAccount: '****9012', bankHolder: 'Klaus Lin' },
+  { id: 'WD-20260901-003', account: 'north_team', currency: 'TWD', amount: 6800, status: '處理中', createdAt: '2026-09-01 15:09:22', updatedAt: '2026-09-01 15:18:40', bankName: '國泰世華', bankAccount: '****6621', bankHolder: 'North Chen', processor: 'operator_demo' },
+  { id: 'WD-20260825-004', account: 'sub_partner_01', currency: 'TWD', amount: 8600, status: '成功', createdAt: '2026-08-25 09:14:32', updatedAt: '2026-08-25 14:08:21', bankName: '台新銀行', bankAccount: '****9012', bankHolder: 'Partner Lin', processor: 'operator_demo' },
+  { id: 'WD-20260728-006', account: 'east_team', currency: 'TWD', amount: 4200, status: '失敗', createdAt: '2026-07-28 13:08:55', updatedAt: '2026-07-29 09:18:06', bankName: '台新銀行', bankAccount: '****4488', bankHolder: 'East Wang', processor: 'operator_demo', failureReason: '收款帳戶驗證未完成' },
+])
+const payoutRecords = ref<CommissionPayoutRecord[]>([
+  { id: 'COM-20260901-001', account: 'agent_taipei', currency: 'TWD', amount: 28460, status: '成功', createdAt: '2026-09-01 00:00:00', updatedAt: '2026-09-01 00:00:03', plan: '台灣返佣標準方案', cycle: '2026-W35（08/25–08/31）', settlementBase: '有效投注總額 TWD 474,333', systemResult: '成功：已發放至傭金錢包', remark: '系統自動結算完成' },
+  { id: 'COM-20260825-004', account: 'north_team', currency: 'TWD', amount: 18600, status: '處理中', createdAt: '2026-08-25 00:00:00', updatedAt: '2026-08-25 00:00:05', plan: '台灣返佣標準方案', cycle: '2026-W34（08/18–08/24）', settlementBase: '有效投注總額 TWD 310,000', systemResult: '待處理：代理停用，系統未能自動發放', remark: '待運營商手動確認' },
+  { id: 'COM-20260811-002', account: 'sub_partner_01', currency: 'TWD', amount: 15400, status: '成功', createdAt: '2026-08-11 00:00:00', updatedAt: '2026-08-11 00:00:04', plan: '台灣返佣標準方案', cycle: '2026-W32（08/04–08/10）', settlementBase: '有效投注總額 TWD 256,667', systemResult: '成功：已發放至傭金錢包', remark: '系統自動結算完成' },
+  { id: 'COM-20260728-006', account: 'east_team', currency: 'TWD', amount: 9200, status: '失敗', createdAt: '2026-07-28 00:00:00', updatedAt: '2026-07-28 00:00:06', plan: '佔成合作方案', cycle: '2026-07（07/01–07/27）', settlementBase: '輸贏總額 TWD -184,000', systemResult: '失敗：結算資料異常', remark: '運營商人工確認後維持失敗' },
+])
+const withdrawalReportKeyword = ref('')
+const withdrawalReportStatus = ref<CommissionOrderStatus | null>(null)
+const withdrawalReportDateRange = ref<[number, number] | null>(null)
+const payoutReportKeyword = ref('')
+const payoutReportStatus = ref<CommissionOrderStatus | null>(null)
+const payoutReportDateRange = ref<[number, number] | null>(null)
+const showWithdrawalProcess = ref(false)
+const selectedWithdrawalOrder = ref<CommissionWithdrawalOrder | null>(null)
+const withdrawalProcessAction = ref<'成功' | '失敗'>('成功')
+const withdrawalFailureReason = ref('')
+const showPayoutProcess = ref(false)
+const selectedPayoutRecord = ref<CommissionPayoutRecord | null>(null)
+const payoutProcessAction = ref<'成功' | '失敗'>('成功')
+const payoutFailureReason = ref('')
 const playerPromotionRecords = computed(() => [
   { time: '2026-08-29 13:42:10', name: '首存回饋', amount: 800, status: '已完成', detail: '流水要求 8 倍，已完成 6.4 倍' },
   { time: '2026-08-18 20:16:44', name: 'VIP3 升級禮', amount: 1200, status: '已完成', detail: 'VIP3 升級獎勵' },
@@ -384,7 +447,7 @@ const logs = ref<OperationLog[]>([
 const navGroups = computed(() => [
   { title: '工作台', items: [{ key: 'dashboard', label: '營運概覽', icon: GridOutline }] },
   { title: '下級管理', items: [{ key: 'agents', label: '代理管理', icon: GitNetworkOutline }, { key: 'players', label: '玩家管理', icon: PeopleOutline }, { key: 'codes', label: '推廣碼', icon: ShareSocialOutline }] },
-  { title: '傭金與報表', items: [{ key: 'commissionPlans', label: '傭金方案', icon: CashOutline }, { key: 'commission', label: '傭金中心', icon: CashOutline }, { key: 'withdrawal', label: '提領傭金', icon: WalletOutline }, { key: 'reports', label: '下級報表', icon: BarChartOutline }] },
+  { title: '傭金與報表', items: [{ key: 'commissionPlans', label: '傭金方案', icon: CashOutline }, { key: 'commission', label: '傭金發放紀錄', icon: CashOutline }, { key: 'withdrawal', label: '傭金提領紀錄', icon: WalletOutline }, { key: 'reports', label: '下級報表', icon: BarChartOutline }] },
   { title: '系統', items: [{ key: 'logs', label: '操作日誌', icon: ListOutline }, { key: 'profile', label: '帳戶設定', icon: PeopleOutline }] },
 ] as const)
 
@@ -509,12 +572,12 @@ const filteredAgentDetailLogs = computed(() => {
 const agentWithdrawalRecords = computed<CommissionWithdrawalRecord[]>(() => {
   const currency = selectedAgent.value?.currency || 'TWD'
   return [
-    { id: 'COM-20260901-001', recordType: '傭金發放', applyAt: '2026-09-01 00:00:00', settlePeriod: '2026-W35', amount: 28460, fee: 0, netAmount: 28460, balanceBefore: 0, balanceAfter: 28460, status: '已入帳', bank: '返佣方案 · 每週結算', reviewAt: '系統結算', reviewer: 'system', remark: '依台灣返佣標準方案結算本期有效投注' },
-    { id: 'WD-20260902-001', recordType: '傭金提領', applyAt: '2026-09-02 11:26:08', settlePeriod: '2026-W35', amount: 12000, fee: 0, netAmount: 12000, balanceBefore: 28460, balanceAfter: 16460, status: '審核中', bank: '台新銀行 · ****9012', reviewAt: '-', reviewer: '待分派', remark: '代理提領傭金轉現金' },
-    { id: 'COM-20260825-004', recordType: '傭金發放', applyAt: '2026-08-25 00:00:00', settlePeriod: '2026-W34', amount: 18600, fee: 0, netAmount: 18600, balanceBefore: 12460, balanceAfter: 31060, status: '已入帳', bank: '返佣方案 · 每週結算', reviewAt: '系統結算', reviewer: 'system', remark: '依方案結算有效投注傭金' },
-    { id: 'WD-20260825-004', recordType: '傭金提領', applyAt: '2026-08-25 09:14:32', settlePeriod: '2026-W34', amount: 8600, fee: 0, netAmount: 8600, balanceBefore: 31060, balanceAfter: 22460, status: '已撥款', bank: '台新銀行 · ****9012', reviewAt: '2026-08-25 14:08:21', reviewer: 'operator_demo', remark: `${currency} 傭金已匯入` },
-    { id: 'COM-20260811-002', recordType: '傭金發放', applyAt: '2026-08-11 00:00:00', settlePeriod: '2026-W32', amount: 15400, fee: 0, netAmount: 15400, balanceBefore: 7060, balanceAfter: 22460, status: '已入帳', bank: '返佣方案 · 每週結算', reviewAt: '系統結算', reviewer: 'system', remark: '依方案結算有效投注傭金' },
-    { id: 'WD-20260728-006', recordType: '傭金提領', applyAt: '2026-07-28 13:08:55', settlePeriod: '2026-W30', amount: 4200, fee: 0, netAmount: 4200, balanceBefore: 11260, balanceAfter: 7060, status: '已駁回', bank: '台新銀行 · ****9012', reviewAt: '2026-07-29 09:18:06', reviewer: 'operator_demo', remark: '收款帳戶驗證未完成' },
+    { id: 'COM-20260901-001', recordType: '傭金發放', applyAt: '2026-09-01 00:00:00', settlePeriod: '2026-W35', amount: 28460, fee: 0, netAmount: 28460, balanceBefore: 0, balanceAfter: 28460, status: '成功', bank: '返佣方案 · 每週結算', reviewAt: '系統結算', reviewer: 'system', remark: '依台灣返佣標準方案結算本期有效投注' },
+    { id: 'WD-20260902-001', recordType: '傭金提領', applyAt: '2026-09-02 11:26:08', settlePeriod: '2026-W35', amount: 12000, fee: 0, netAmount: 12000, balanceBefore: 28460, balanceAfter: 16460, status: '處理中', bank: '台新銀行 · ****9012', reviewAt: '-', reviewer: '待分派', remark: '代理提領傭金轉現金' },
+    { id: 'COM-20260825-004', recordType: '傭金發放', applyAt: '2026-08-25 00:00:00', settlePeriod: '2026-W34', amount: 18600, fee: 0, netAmount: 18600, balanceBefore: 12460, balanceAfter: 31060, status: '成功', bank: '返佣方案 · 每週結算', reviewAt: '系統結算', reviewer: 'system', remark: '依方案結算有效投注傭金' },
+    { id: 'WD-20260825-004', recordType: '傭金提領', applyAt: '2026-08-25 09:14:32', settlePeriod: '2026-W34', amount: 8600, fee: 0, netAmount: 8600, balanceBefore: 31060, balanceAfter: 22460, status: '成功', bank: '台新銀行 · ****9012', reviewAt: '2026-08-25 14:08:21', reviewer: 'operator_demo', remark: `${currency} 傭金已匯入` },
+    { id: 'COM-20260811-002', recordType: '傭金發放', applyAt: '2026-08-11 00:00:00', settlePeriod: '2026-W32', amount: 15400, fee: 0, netAmount: 15400, balanceBefore: 7060, balanceAfter: 22460, status: '成功', bank: '返佣方案 · 每週結算', reviewAt: '系統結算', reviewer: 'system', remark: '依方案結算有效投注傭金' },
+    { id: 'WD-20260728-006', recordType: '傭金提領', applyAt: '2026-07-28 13:08:55', settlePeriod: '2026-W30', amount: 4200, fee: 0, netAmount: 4200, balanceBefore: 11260, balanceAfter: 7060, status: '失敗', bank: '台新銀行 · ****9012', reviewAt: '2026-07-29 09:18:06', reviewer: 'operator_demo', remark: '收款帳戶驗證未完成' },
   ]
 })
 const filteredAgentWithdrawalRecords = computed(() => {
@@ -527,9 +590,71 @@ const filteredAgentWithdrawalRecords = computed(() => {
     return textMatch && statusMatch && typeMatch && dateMatch
   })
 })
+const visibleWithdrawalOrders = computed(() => withdrawalOrders.value.filter((order) => currentRole.value === '運營商' || canViewAgent(agentRows.value.find((row) => row.account === order.account) || agentRows.value[0])))
+const filteredWithdrawalOrders = computed(() => visibleWithdrawalOrders.value.filter((order) => {
+  const query = withdrawalReportKeyword.value.trim().toLowerCase()
+  return (!query || `${order.id}${order.account}${order.bankName}${order.bankAccount}${order.bankHolder}`.toLowerCase().includes(query))
+    && (!withdrawalReportStatus.value || order.status === withdrawalReportStatus.value)
+    && inDateRange(order.createdAt, withdrawalReportDateRange.value)
+}))
+const visiblePayoutRecords = computed(() => payoutRecords.value.filter((record) => currentRole.value === '運營商' || canViewAgent(agentRows.value.find((row) => row.account === record.account) || agentRows.value[0])))
+const filteredPayoutRecords = computed(() => visiblePayoutRecords.value.filter((record) => {
+  const query = payoutReportKeyword.value.trim().toLowerCase()
+  return (!query || `${record.id}${record.account}${record.plan}${record.cycle}${record.remark}`.toLowerCase().includes(query))
+    && (!payoutReportStatus.value || record.status === payoutReportStatus.value)
+    && inDateRange(record.createdAt, payoutReportDateRange.value)
+}))
 function openCommissionRecordDetail(record: CommissionWithdrawalRecord) {
   selectedCommissionRecord.value = record
   showCommissionRecordDetail.value = true
+}
+
+function openWithdrawalOrder(order: CommissionWithdrawalOrder) {
+  selectedWithdrawalOrder.value = order
+  withdrawalProcessAction.value = '成功'
+  withdrawalFailureReason.value = order.failureReason || ''
+  showWithdrawalProcess.value = true
+}
+function startWithdrawalProcessing(order: CommissionWithdrawalOrder) {
+  if (currentRole.value !== '運營商' || order.status !== '待處理') return
+  order.status = '處理中'
+  order.updatedAt = operationTimestamp()
+  order.processor = identity.value.account
+  openWithdrawalOrder(order)
+  showNotice('success', '已進入出款處理', '此訂單已鎖定為處理中，其他人無法重複操作。')
+}
+function completeWithdrawalOrder() {
+  const order = selectedWithdrawalOrder.value
+  if (!order || currentRole.value !== '運營商' || order.status !== '處理中') return
+  if (withdrawalProcessAction.value === '失敗' && !withdrawalFailureReason.value.trim()) {
+    showNotice('warning', '請填寫失敗原因', '失敗訂單必須記錄人工判斷原因。')
+    return
+  }
+  order.status = withdrawalProcessAction.value
+  order.updatedAt = operationTimestamp()
+  order.failureReason = withdrawalProcessAction.value === '失敗' ? withdrawalFailureReason.value.trim() : undefined
+  showWithdrawalProcess.value = false
+  showNotice('success', `出款${order.status}`, `訂單 ${order.id} 已更新為${order.status}。`)
+}
+function openPayoutProcess(record: CommissionPayoutRecord) {
+  selectedPayoutRecord.value = record
+  payoutProcessAction.value = '成功'
+  payoutFailureReason.value = record.status === '失敗' ? record.remark : ''
+  showPayoutProcess.value = true
+}
+function completePayoutRecord() {
+  const record = selectedPayoutRecord.value
+  if (!record || currentRole.value !== '運營商' || record.status !== '處理中') return
+  if (payoutProcessAction.value === '失敗' && !payoutFailureReason.value.trim()) {
+    showNotice('warning', '請填寫失敗原因', '手動失敗需要保留處理備註。')
+    return
+  }
+  record.status = payoutProcessAction.value
+  record.updatedAt = operationTimestamp()
+  record.systemResult = payoutProcessAction.value === '成功' ? '成功：已發放至傭金錢包' : '失敗：運營商手動判定未通過'
+  record.remark = payoutProcessAction.value === '失敗' ? payoutFailureReason.value.trim() : '運營商手動確認成功，傭金已發放至傭金錢包。'
+  showPayoutProcess.value = false
+  showNotice('success', `傭金發放${record.status}`, `紀錄 ${record.id} 已更新為${record.status}。`)
 }
 
 function canViewAgent(row: AgentRow) {
@@ -721,8 +846,10 @@ function submitWithdrawal() {
     return
   }
   showWithdrawal.value = false
-  logs.value.unshift({ time: operationTimestamp(), type: '提領申請', actor: loginAccount.value, target: identity.value.account, detail: `申請提領 TWD ${withdrawalAmount.value.toLocaleString()}`, before: '可提領', after: '待平台審核', ip: '10.20.8.15' })
-  showNotice('success', '提領申請已送出', '平台審核完成前，金額會維持在待審核餘額。')
+  const amount = withdrawalAmount.value
+  withdrawalOrders.value.unshift({ id: `WD-${operationTimestamp().replace(/[-: ]/g, '').slice(0, 12)}-${String(withdrawalOrders.value.length + 1).padStart(3, '0')}`, account: identity.value.account, currency: identity.value.currency, amount, status: '待處理', createdAt: operationTimestamp(), updatedAt: operationTimestamp(), bankName: bankName.value, bankAccount: `****${bankAccount.value.slice(-4)}`, bankHolder: bankHolder.value })
+  logs.value.unshift({ time: operationTimestamp(), type: '提領申請', actor: loginAccount.value, target: identity.value.account, detail: `申請提領 TWD ${amount.toLocaleString()}`, before: '可提領', after: '待處理', ip: '10.20.8.15' })
+  showNotice('success', '提領申請已送出', '訂單目前為待處理，等待運營商出款處理。')
   withdrawalAmount.value = null
 }
 
@@ -1237,7 +1364,7 @@ const playerColumns = computed(() => [
                  <div v-else-if="detailTab === 'wallet'" class="agent-detail-grid detail-page-card"><div v-if="currentRole === '運營商'" class="full wallet-action-row"><div><span>人工資金調整</span><strong>人工加扣款</strong><small>資金帳變不可轉帳；可由運營商人工加扣款，所有調整都會留下操作紀錄。</small></div><NButton type="primary" @click="openWalletAdjustment(selectedAgent)">人工加扣款</NButton></div><div><span>代理傭金錢包餘額</span><strong class="positive">{{ selectedAgent.currency }} {{ selectedAgent.walletBalance.toLocaleString() }}</strong></div><div><span>待結算傭金</span><strong>{{ selectedAgent.currency }} 12,680</strong></div><div><span>本期產生傭金</span><strong>{{ selectedAgent.currency }} 28,460</strong></div><div class="wallet-status-row"><span>可提領狀態</span><div><NTag :type="selectedAgent.withdrawalEnabled === false ? 'error' : 'success'" round>{{ selectedAgent.withdrawalEnabled === false ? '不可提領' : '可提領' }}</NTag><NButton v-if="currentRole === '運營商'" size="small" secondary @click="requestToggleWithdrawalStatus(selectedAgent)">{{ selectedAgent.withdrawalEnabled === false ? '設為可提領' : '設為不可提領' }}</NButton></div></div><div><span>註冊時間</span><strong>{{ selectedAgent.registerAt || '尚未記錄' }}</strong></div><div><span>最後登入時間</span><strong>{{ selectedAgent.lastLoginAt || '尚未登入' }}</strong></div><div><span>最後登入 IP</span><strong>{{ selectedAgent.lastLoginIp || '尚未記錄' }}</strong></div><div class="full wallet-review-note"><span>提領審核</span><strong>提領申請需由運營商審核</strong></div></div>
                   <div v-else-if="detailTab === 'relationship'" class="agent-info-panel detail-page-card"><div class="agent-info-header"><div><span>完整樹狀路徑</span><strong>{{ displayAgentPath(selectedAgent.path) }}</strong><p v-if="selectedAgent.pendingTransferTargetPath" class="pending-transfer">預約新代理線：{{ displayAgentPath(selectedAgent.pendingTransferTargetPath) }}（{{ selectedAgent.pendingTransferEffectiveAt }} 生效）</p></div><NButton v-if="currentRole === '運營商' || currentRole === '總代理'" class="agent-transfer-button" type="primary" :disabled="selectedAgent.level === '總代理'" @click="openAgentTransfer(selectedAgent)">更換代理線</NButton></div><div class="agent-stat-grid"><div><span>直屬下級代理</span><strong>{{ selectedAgent.directAgentCount ?? selectedAgent.children }} 位</strong></div><div><span>直屬下級玩家</span><strong>{{ selectedAgent.directPlayerCount ?? 0 }} 位</strong></div><div><span>總下級代理</span><strong>{{ selectedAgent.totalAgentCount ?? selectedAgent.children }} 位</strong></div><div><span>總下級玩家</span><strong>{{ selectedAgent.totalPlayerCount ?? 0 }} 位</strong></div><div><span>下級儲值總金額</span><strong>{{ selectedAgent.currency }} {{ (selectedAgent.totalDeposit ?? 0).toLocaleString() }}</strong></div><div><span>下級總有效投注</span><strong>{{ selectedAgent.currency }} {{ (selectedAgent.totalEffectiveBet ?? 0).toLocaleString() }}</strong></div></div><div class="agent-info-rule"><strong>代理轉線規則</strong><p>僅限同幣別代理線；總代理不可轉線。轉線於本次結算週期結束後生效，生效前訂單歸原代理線，生效後新訂單歸新代理線，不回溯重算歷史傭金。</p></div></div>
                 <div v-else-if="detailTab === 'commission'" class="agent-detail-grid detail-page-card"><div class="full"><span>套用傭金方案</span><NSelect v-model:value="draftPlanId" :options="planOptions" /></div><div><span>方案推廣碼</span><strong class="code-text">{{ selectedPlan.promoCode }}</strong></div><div><span>傭金模式</span><strong>{{ selectedPlan.model }}</strong></div><div><span>結算週期</span><strong>{{ selectedPlan.cycle }}</strong></div><div><span>默認可分配點數</span><strong>{{ selectedPlan.allocationRate }}%</strong></div><div class="full"><span>方案規則</span><p class="modal-help">{{ selectedPlan.description }} 下級代理可設定的點數不得超過上級可分配額度。</p></div><div class="full"><NButton type="primary" @click="saveAgentPlan">儲存傭金方案</NButton></div></div>
-                <div v-else-if="detailTab === 'withdrawals'" class="agent-withdrawal-panel detail-page-card"><div class="table-section-label"><strong>傭金帳變紀錄</strong><span>整合週期傭金發放與代理提領轉現金紀錄；金額、餘額與狀態採同一欄位對齊</span></div><NCard class="filter-card filter-card-emphasis agent-withdrawal-filter"><div class="filter-row filter-row-advanced"><div class="filter-field-group"><label>帳變類型</label><NSelect v-model:value="agentWithdrawalType" clearable placeholder="全部類型" :options="[{label:'傭金發放',value:'傭金發放'},{label:'傭金提領',value:'傭金提領'}]" class="filter-select" /></div><div class="filter-field-group filter-date-group"><label>發生時間</label><NDatePicker v-model:value="agentWithdrawalDateRange" type="daterange" clearable format="yyyy-MM-dd" start-placeholder="起始日期" end-placeholder="結束日期" placeholder="選擇時間區段" class="filter-date" /></div><div class="filter-field-group"><label>狀態</label><NSelect v-model:value="agentWithdrawalStatus" clearable placeholder="全部狀態" :options="[{label:'待結算',value:'待結算'},{label:'已入帳',value:'已入帳'},{label:'待審核',value:'待審核'},{label:'審核中',value:'審核中'},{label:'已撥款',value:'已撥款'},{label:'已駁回',value:'已駁回'}]" class="filter-select" /></div><div class="filter-field-group filter-account-group"><label>關鍵字／單號</label><NInput v-model:value="agentWithdrawalKeyword" clearable placeholder="搜尋單號、銀行、方案或備註" class="filter-field filter-log-search"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput></div></div></NCard><NCard :bordered="false" class="table-card withdrawal-record-card"><div class="withdrawal-record-head"><span>發生時間</span><span>帳變類型</span><span>帳變單號</span><span>結算週期</span><span>帳變金額</span><span>餘額</span><span>狀態</span><span>操作</span></div><div v-for="record in filteredAgentWithdrawalRecords" :key="record.id" class="withdrawal-record-row account-record-row"><time>{{ record.applyAt }}</time><NTag size="small" round :type="record.recordType === '傭金發放' ? 'info' : 'warning'">{{ record.recordType }}</NTag><code>{{ record.id }}</code><span>{{ record.settlePeriod }}</span><strong :class="record.recordType === '傭金發放' ? 'positive' : 'negative'">{{ record.recordType === '傭金發放' ? '+' : '-' }}{{ selectedAgent.currency }} {{ record.netAmount.toLocaleString() }}</strong><strong>{{ selectedAgent.currency }} {{ record.balanceAfter.toLocaleString() }}</strong><NTag size="small" round :type="record.status === '已入帳' || record.status === '已撥款' ? 'success' : record.status === '已駁回' ? 'error' : 'warning'">{{ record.status }}</NTag><NButton size="small" quaternary @click="openCommissionRecordDetail(record)">查看詳情</NButton></div><p v-if="!filteredAgentWithdrawalRecords.length" class="modal-help">目前沒有符合條件的傭金帳變紀錄。</p></NCard></div>
+                 <div v-else-if="detailTab === 'withdrawals'" class="agent-withdrawal-panel detail-page-card"><div class="table-section-label"><strong>傭金帳變紀錄</strong><span>整合傭金提領與傭金發放報表；本頁僅供查看詳情</span></div><NCard class="filter-card filter-card-emphasis agent-withdrawal-filter"><div class="filter-row filter-row-advanced"><div class="filter-field-group"><label>帳變類型</label><NSelect v-model:value="agentWithdrawalType" clearable placeholder="全部類型" :options="[{label:'傭金發放',value:'傭金發放'},{label:'傭金提領',value:'傭金提領'}]" class="filter-select" /></div><div class="filter-field-group filter-date-group"><label>發生時間</label><NDatePicker v-model:value="agentWithdrawalDateRange" type="daterange" clearable format="yyyy-MM-dd" start-placeholder="起始日期" end-placeholder="結束日期" placeholder="選擇時間區段" class="filter-date" /></div><div class="filter-field-group"><label>狀態</label><NSelect v-model:value="agentWithdrawalStatus" clearable placeholder="全部狀態" :options="[{label:'待處理',value:'待處理'},{label:'處理中',value:'處理中'},{label:'成功',value:'成功'},{label:'失敗',value:'失敗'}]" class="filter-select" /></div><div class="filter-field-group filter-account-group"><label>關鍵字／單號</label><NInput v-model:value="agentWithdrawalKeyword" clearable placeholder="搜尋單號、銀行、方案或備註" class="filter-field filter-log-search"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput></div></div></NCard><NCard :bordered="false" class="table-card withdrawal-record-card"><div class="withdrawal-record-head"><span>發生時間</span><span>帳變類型</span><span>帳變單號</span><span>結算週期</span><span>帳變金額</span><span>餘額</span><span>狀態</span><span>操作</span></div><div v-for="record in filteredAgentWithdrawalRecords" :key="record.id" class="withdrawal-record-row account-record-row"><time>{{ record.applyAt }}</time><NTag size="small" round :type="record.recordType === '傭金發放' ? 'info' : 'warning'">{{ record.recordType }}</NTag><code>{{ record.id }}</code><span>{{ record.settlePeriod }}</span><strong :class="record.recordType === '傭金發放' ? 'positive' : 'negative'">{{ record.recordType === '傭金發放' ? '+' : '-' }}{{ selectedAgent.currency }} {{ record.netAmount.toLocaleString() }}</strong><strong>{{ selectedAgent.currency }} {{ record.balanceAfter.toLocaleString() }}</strong><NTag size="small" round :type="record.status === '成功' ? 'success' : record.status === '失敗' ? 'error' : 'warning'">{{ record.status }}</NTag><NButton size="small" quaternary @click="openCommissionRecordDetail(record)">查看詳情</NButton></div><p v-if="!filteredAgentWithdrawalRecords.length" class="modal-help">目前沒有符合條件的傭金帳變紀錄。</p></NCard></div>
                 <div v-else class="agent-log-panel detail-page-card"><div class="table-section-label"><strong>操作紀錄</strong><span>顯示此代理的登入、設定、轉線與提領狀態異動</span></div><NCard class="filter-card filter-card-emphasis agent-detail-log-filter"><div class="filter-row filter-row-advanced"><div class="filter-field-group"><label>操作類型</label><NSelect v-model:value="agentDetailLogType" clearable placeholder="全部類型" :options="[{label:'登入',value:'登入'},{label:'代理 2FA 設定',value:'代理 2FA 設定'},{label:'設定反傭',value:'設定反傭'},{label:'代理轉線',value:'代理轉線'},{label:'修改提領狀態',value:'修改提領狀態'}]" class="filter-select" /></div><div class="filter-field-group filter-date-group"><label>操作時間</label><NDatePicker v-model:value="agentDetailLogDateRange" type="daterange" clearable format="yyyy-MM-dd" start-placeholder="起始日期" end-placeholder="結束日期" placeholder="選擇時間區段" class="filter-date" /></div><div class="filter-field-group filter-account-group"><label>關鍵字</label><NInput v-model:value="agentDetailLogSearch" clearable placeholder="搜尋內容、操作者或 IP" class="filter-field filter-log-search"><template #prefix><NIcon><SearchOutline /></NIcon></template></NInput></div></div></NCard><NCard :bordered="false" class="table-card log-detail-card"><div class="log-table-head log-table-head-detailed"><span>時間</span><span>操作類型</span><span>操作人</span><span>詳細資訊</span><span>生效時間</span><span>IP</span></div><div v-for="log in filteredAgentDetailLogs" :key="`${log.time}-${log.detail}`" class="log-table-row log-table-row-detailed"><time>{{ log.time }}</time><NTag size="small" round :type="log.type === '登入' ? 'info' : log.type.includes('提領') ? 'warning' : 'default'">{{ log.type }}</NTag><span>{{ log.actor }}</span><div><strong>{{ log.detail }}</strong><small>{{ log.before || '-' }} → {{ log.after || '-' }}</small></div><span>{{ log.effectiveAt || '-' }}</span><code>{{ log.ip }}</code></div><p v-if="!filteredAgentDetailLogs.length" class="modal-help">目前沒有符合條件的操作紀錄。</p></NCard></div>
                 </div></div>
               </template>
@@ -1278,14 +1405,17 @@ const playerColumns = computed(() => [
             </section>
 
             <section v-else-if="activeKey === 'commission'">
-              <div class="section-head"><div><h1>傭金中心</h1><p class="muted">查看目前代理線的傭金模式、結算週期與餘額。</p></div><NTag type="info" round>本期：2026/08/25–08/31</NTag></div>
-               <div class="commission-cards"><NCard><div class="mini-label">目前模式</div><div class="big-value"><NTag type="success" size="small" round>返佣</NTag> <NTag type="info" size="small">總代設定</NTag></div><p class="muted">有效投注額按方案比例計算</p></NCard><NCard><div class="mini-label">結算週期</div><div class="big-value">{{ selectedCycle }}</div><p class="muted">變更於下一個結算週期生效</p></NCard><NCard><div class="mini-label">本期可提領</div><div class="big-value positive">TWD 28,460</div><p class="muted">已扣除追回與手續費</p></NCard></div>
-              <NCard title="傭金明細" class="table-card"><NTabs type="line"><NTabPane name="all" tab="全部"><div class="commission-row" v-for="row in [{date:'08/31',type:'返佣',source:'north_team · 有效投注',amount:'+ TWD 3,240'},{date:'08/30',type:'佔成',source:'east_team · 輸贏扣行政成本',amount:'+ TWD 1,200'},{date:'08/28',type:'追回',source:'異常訂單 P-20318',amount:'- TWD 400'}]" :key="row.date + row.source"><div><strong>{{ row.type }}</strong><span>{{ row.date }} · {{ row.source }}</span></div><strong :class="row.amount.startsWith('-') ? 'negative' : 'positive'">{{ row.amount }}</strong></div></NTabPane></NTabs></NCard>
+              <div class="section-head"><div><h1>傭金發放紀錄</h1><p class="muted">系統依結算週期產生傭金發放紀錄；處理中的異常紀錄由運營商手動判定成功或失敗。</p></div><NTag type="info" round>系統結算報表</NTag></div>
+              <div class="commission-cards"><NCard><div class="mini-label">待手動處理</div><div class="big-value">{{ payoutRecords.filter((row) => row.status === '處理中').length }} 筆</div><p class="muted">異常或未自動發放</p></NCard><NCard><div class="mini-label">成功發放</div><div class="big-value positive">{{ payoutRecords.filter((row) => row.status === '成功').length }} 筆</div><p class="muted">已入代理傭金錢包</p></NCard><NCard><div class="mini-label">本期發放金額</div><div class="big-value positive">TWD {{ payoutRecords.filter((row) => row.status === '成功').reduce((sum, row) => sum + row.amount, 0).toLocaleString() }}</div><p class="muted">依週期結算結果統計</p></NCard></div>
+              <NCard class="filter-card filter-card-emphasis"><div class="filter-row filter-row-advanced"><div class="filter-field-group"><label>狀態</label><NSelect v-model:value="payoutReportStatus" clearable placeholder="全部狀態" :options="[{label:'處理中',value:'處理中'},{label:'成功',value:'成功'},{label:'失敗',value:'失敗'}]" class="filter-select" /></div><div class="filter-field-group filter-date-group"><label>紀錄產生時間</label><NDatePicker v-model:value="payoutReportDateRange" type="daterange" clearable format="yyyy-MM-dd" placeholder="選擇時間區段" class="filter-date" /></div><div class="filter-field-group filter-account-group"><label>帳號／單號</label><NInput v-model:value="payoutReportKeyword" clearable placeholder="搜尋代理帳號、方案或單號" class="filter-field" /></div></div></NCard>
+              <NCard :bordered="false" class="table-card commission-report-card"><div class="commission-report-head"><span>帳號</span><span>金額</span><span>狀態</span><span>紀錄產生時間</span><span>異動時間</span><span>操作</span></div><div v-for="record in filteredPayoutRecords" :key="record.id" class="commission-report-row"><div><strong>{{ record.account }}</strong><small>{{ record.id }}</small></div><strong class="positive">+ {{ record.currency }} {{ record.amount.toLocaleString() }}</strong><NTag size="small" round :type="record.status === '成功' ? 'success' : record.status === '失敗' ? 'error' : 'warning'">{{ record.status }}</NTag><time>{{ record.createdAt }}</time><time>{{ record.updatedAt }}</time><div class="report-action-group"><NButton size="small" quaternary @click="openPayoutProcess(record)">查看詳情</NButton><NButton v-if="currentRole === '運營商' && record.status === '處理中'" size="small" type="primary" @click="openPayoutProcess(record)">手動處理</NButton></div></div><p v-if="!filteredPayoutRecords.length" class="modal-help">目前沒有符合條件的傭金發放紀錄。</p></NCard>
             </section>
 
             <section v-else-if="activeKey === 'withdrawal'">
-              <div class="section-head"><div><h1>提領傭金</h1><p class="muted">提領申請送出後由運營商審核，審核期間不會刪除原紀錄。</p></div><NButton type="primary" @click="showWithdrawal = true">申請提領</NButton></div>
-              <div class="withdraw-grid"><NCard><div class="withdraw-status"><NStatistic label="可提領傭金" :value="withdrawableBalance" prefix="TWD " /><NTag :type="withdrawalEligible ? 'success' : 'error'" round>{{ withdrawalEligible ? '可提領' : '不可提領' }}</NTag></div><NDivider /><div class="summary-list"><div><span>最低提領</span><strong>TWD {{ withdrawalMin.toLocaleString() }}</strong></div><div><span>手續費</span><strong>每筆 TWD 30</strong></div><div><span>今日已申請／上限</span><strong>{{ withdrawalTodayCount }}／{{ withdrawalDailyLimit }} 次</strong></div></div><p class="modal-help">可提領狀態依「可提領餘額達最低金額」且「今日申請次數未達上限」判定；送出後仍須由運營商審核。</p></NCard><NCard title="申請紀錄"><div class="commission-row"><div><strong>審核中</strong><span>2026/08/27 09:43 · TWD 12,000</span></div><NTag type="warning" round>待審核</NTag></div><div class="commission-row"><div><strong>已完成</strong><span>2026/08/20 15:10 · TWD 8,000</span></div><NTag type="success" round>已撥款</NTag></div></NCard></div>
+              <div class="section-head"><div><h1>傭金提領紀錄</h1><p class="muted">代理提交提領後先為待處理；運營商開始出款後鎖定為處理中，完成後更新成功或失敗。</p></div><NButton v-if="currentRole !== '運營商'" type="primary" @click="showWithdrawal = true">申請提領</NButton></div>
+              <div class="commission-cards"><NCard><div class="mini-label">待處理</div><div class="big-value">{{ withdrawalOrders.filter((row) => row.status === '待處理').length }} 筆</div><p class="muted">等待運營商出款</p></NCard><NCard><div class="mini-label">處理中</div><div class="big-value">{{ withdrawalOrders.filter((row) => row.status === '處理中').length }} 筆</div><p class="muted">已鎖定，不可重複處理</p></NCard><NCard><div class="mini-label">成功／失敗</div><div class="big-value positive">{{ withdrawalOrders.filter((row) => row.status === '成功').length }}／{{ withdrawalOrders.filter((row) => row.status === '失敗').length }}</div><p class="muted">完成結果統計</p></NCard></div>
+              <NCard class="filter-card filter-card-emphasis"><div class="filter-row filter-row-advanced"><div class="filter-field-group"><label>狀態</label><NSelect v-model:value="withdrawalReportStatus" clearable placeholder="全部狀態" :options="[{label:'待處理',value:'待處理'},{label:'處理中',value:'處理中'},{label:'成功',value:'成功'},{label:'失敗',value:'失敗'}]" class="filter-select" /></div><div class="filter-field-group filter-date-group"><label>紀錄產生時間</label><NDatePicker v-model:value="withdrawalReportDateRange" type="daterange" clearable format="yyyy-MM-dd" placeholder="選擇時間區段" class="filter-date" /></div><div class="filter-field-group filter-account-group"><label>帳號／單號</label><NInput v-model:value="withdrawalReportKeyword" clearable placeholder="搜尋代理帳號、銀行或單號" class="filter-field" /></div></div></NCard>
+              <NCard :bordered="false" class="table-card commission-report-card"><div class="commission-report-head"><span>帳號</span><span>金額</span><span>狀態</span><span>紀錄產生時間</span><span>異動時間</span><span>操作</span></div><div v-for="order in filteredWithdrawalOrders" :key="order.id" class="commission-report-row"><div><strong>{{ order.account }}</strong><small>{{ order.id }}</small></div><strong class="negative">- {{ order.currency }} {{ order.amount.toLocaleString() }}</strong><NTag size="small" round :type="order.status === '成功' ? 'success' : order.status === '失敗' ? 'error' : 'warning'">{{ order.status }}</NTag><time>{{ order.createdAt }}</time><time>{{ order.updatedAt }}</time><div class="report-action-group"><NButton size="small" quaternary @click="openWithdrawalOrder(order)">查看詳情</NButton><NButton v-if="currentRole === '運營商' && order.status === '待處理'" size="small" type="primary" @click="startWithdrawalProcessing(order)">出款處理</NButton><NButton v-else-if="currentRole === '運營商' && order.status === '處理中'" size="small" disabled>處理中</NButton></div></div><p v-if="!filteredWithdrawalOrders.length" class="modal-help">目前沒有符合條件的傭金提領紀錄。</p></NCard>
             </section>
 
             <section v-else-if="activeKey === 'reports'">
@@ -1362,17 +1492,31 @@ const playerColumns = computed(() => [
            <div v-else-if="detailTab === 'wallet'" class="agent-detail-grid"><div><span>代理傭金錢包餘額</span><strong class="positive">{{ selectedAgent.currency }} {{ selectedAgent.walletBalance.toLocaleString() }}</strong></div><div><span>待結算傭金</span><strong>{{ selectedAgent.currency }} 12,680</strong></div><div><span>本期產生傭金</span><strong>{{ selectedAgent.currency }} 28,460</strong></div><div><span>可提領狀態</span><NTag type="success" round>可提領</NTag></div><div class="full"><span>錢包權限</span><p class="modal-help">代理傭金錢包僅可查看與申請提領；資金帳變不可轉帳、加扣款，提領需由運營商審核。</p></div></div>
            <div v-else-if="detailTab === 'relationship'" class="agent-detail-grid"><div class="full"><span>完整樹狀路徑</span><strong>{{ selectedAgent.path }}</strong></div><div><span>代理層級</span><strong>{{ selectedAgent.level }}</strong></div><div><span>直屬下級數</span><strong>{{ selectedAgent.children }} 位</strong></div><div class="full"><span>關係說明</span><p class="modal-help">此代理只能隸屬一條代理線；轉移代理線時，生效前後訂單依原／新代理線歸屬，不回溯重算歷史傭金。</p></div></div>
            <div v-else-if="detailTab === 'commission'" class="agent-detail-grid"><div class="full"><span>套用傭金方案</span><NSelect v-model:value="draftPlanId" :options="planOptions" /></div><div><span>方案推廣碼</span><strong class="code-text">{{ selectedPlan.promoCode }}</strong></div><div><span>註冊上級</span><strong>{{ selectedPlan.parentAccount }}</strong></div><div><span>傭金模式</span><strong>{{ selectedPlan.model }}</strong></div><div><span>結算週期</span><strong>{{ selectedPlan.cycle }}</strong></div><div><span>默認可分配點數</span><strong>{{ selectedPlan.allocationRate }}%</strong></div><div v-if="selectedPlan.model === '佔成'" class="full"><span>佔成設定</span><p class="modal-help">玩家總輸贏扣除行政費率 {{ selectedPlanConfig.share.adminCostRate }}% 後，按 {{ selectedPlanConfig.share.shareRate }}% 分配；負數採{{ selectedPlanConfig.share.negativeMode }}，{{ selectedPlanConfig.share.offsetType }}{{ selectedPlanConfig.share.offsetLimit ? ` ${selectedPlanConfig.share.offsetLimit}` : '' }}。</p></div><div v-else class="full"><span>返佣設定</span><p class="modal-help">有效投注額 × {{ selectedPlanConfig.rebate.rebateRate }}%；{{ selectedPlanConfig.rebate.tieredEnabled ? '已啟用階梯式比例預留。' : '固定比例計算。' }}</p></div><div class="full"><span>方案規則</span><p class="modal-help">{{ selectedPlan.description }} 下級代理可設定的點數不得超過上級可分配額度。</p></div></div>
-           <div v-else-if="detailTab === 'withdrawals'" class="agent-withdrawal-panel"><div class="table-section-label"><strong>傭金帳變紀錄</strong><span>整合週期傭金發放與代理提領轉現金紀錄</span></div><div class="filter-row filter-row-advanced agent-withdrawal-filter"><div class="filter-field-group"><label>帳變類型</label><NSelect v-model:value="agentWithdrawalType" clearable placeholder="全部類型" :options="[{label:'傭金發放',value:'傭金發放'},{label:'傭金提領',value:'傭金提領'}]" class="filter-select" /></div><div class="filter-field-group filter-date-group"><label>發生時間</label><NDatePicker v-model:value="agentWithdrawalDateRange" type="daterange" clearable format="yyyy-MM-dd" placeholder="選擇時間區段" class="filter-date" /></div><div class="filter-field-group"><label>狀態</label><NSelect v-model:value="agentWithdrawalStatus" clearable placeholder="全部狀態" :options="[{label:'待結算',value:'待結算'},{label:'已入帳',value:'已入帳'},{label:'待審核',value:'待審核'},{label:'審核中',value:'審核中'},{label:'已撥款',value:'已撥款'},{label:'已駁回',value:'已駁回'}]" class="filter-select" /></div><div class="filter-field-group filter-account-group"><label>關鍵字／單號</label><NInput v-model:value="agentWithdrawalKeyword" clearable placeholder="搜尋單號、銀行、方案或備註" class="filter-field" /></div></div><div class="withdrawal-record-list"><div v-for="record in filteredAgentWithdrawalRecords" :key="record.id" class="withdrawal-record-item account-record-item"><div><NTag size="small" round :type="record.recordType === '傭金發放' ? 'info' : 'warning'">{{ record.recordType }}</NTag><strong>{{ record.id }}</strong><small>{{ record.applyAt }} · {{ record.settlePeriod }}</small></div><div><strong :class="record.recordType === '傭金發放' ? 'positive' : 'negative'">{{ record.recordType === '傭金發放' ? '+' : '-' }}{{ selectedAgent.currency }} {{ record.netAmount.toLocaleString() }}</strong><small>餘額 {{ selectedAgent.currency }} {{ record.balanceAfter.toLocaleString() }}</small></div><NTag size="small" round :type="record.status === '已入帳' || record.status === '已撥款' ? 'success' : record.status === '已駁回' ? 'error' : 'warning'">{{ record.status }}</NTag><NButton size="small" quaternary @click="openCommissionRecordDetail(record)">查看詳情</NButton></div><p v-if="!filteredAgentWithdrawalRecords.length" class="modal-help">目前沒有符合條件的傭金帳變紀錄。</p></div></div>
+           <div v-else-if="detailTab === 'withdrawals'" class="agent-withdrawal-panel"><div class="table-section-label"><strong>傭金帳變紀錄</strong><span>整合傭金提領與傭金發放報表；本頁僅供查看詳情</span></div><div class="filter-row filter-row-advanced agent-withdrawal-filter"><div class="filter-field-group"><label>帳變類型</label><NSelect v-model:value="agentWithdrawalType" clearable placeholder="全部類型" :options="[{label:'傭金發放',value:'傭金發放'},{label:'傭金提領',value:'傭金提領'}]" class="filter-select" /></div><div class="filter-field-group filter-date-group"><label>發生時間</label><NDatePicker v-model:value="agentWithdrawalDateRange" type="daterange" clearable format="yyyy-MM-dd" placeholder="選擇時間區段" /></div><div class="filter-field-group"><label>狀態</label><NSelect v-model:value="agentWithdrawalStatus" clearable placeholder="全部狀態" :options="[{label:'待處理',value:'待處理'},{label:'處理中',value:'處理中'},{label:'成功',value:'成功'},{label:'失敗',value:'失敗'}]" class="filter-select" /></div><div class="filter-field-group filter-account-group"><label>關鍵字／單號</label><NInput v-model:value="agentWithdrawalKeyword" clearable placeholder="搜尋單號、銀行、方案或備註" class="filter-field" /></div></div><div class="withdrawal-record-list"><div v-for="record in filteredAgentWithdrawalRecords" :key="record.id" class="withdrawal-record-item account-record-item"><div><NTag size="small" round :type="record.recordType === '傭金發放' ? 'info' : 'warning'">{{ record.recordType }}</NTag><strong>{{ record.id }}</strong><small>{{ record.applyAt }} · {{ record.settlePeriod }}</small></div><div><strong :class="record.recordType === '傭金發放' ? 'positive' : 'negative'">{{ record.recordType === '傭金發放' ? '+' : '-' }}{{ selectedAgent.currency }} {{ record.netAmount.toLocaleString() }}</strong><small>餘額 {{ selectedAgent.currency }} {{ record.balanceAfter.toLocaleString() }}</small></div><NTag size="small" round :type="record.status === '成功' ? 'success' : record.status === '失敗' ? 'error' : 'warning'">{{ record.status }}</NTag><NButton size="small" quaternary @click="openCommissionRecordDetail(record)">查看詳情</NButton></div><p v-if="!filteredAgentWithdrawalRecords.length" class="modal-help">目前沒有符合條件的傭金帳變紀錄。</p></div></div>
            <div v-else class="detail-log-list"><div v-for="log in logs.filter((item) => item.detail.includes(selectedAgent?.account ?? '')).slice(0, 5)" :key="`${log.time}-${log.detail}`" class="recent-row"><div class="log-dot" /><div><strong>{{ log.type }}</strong><span>{{ log.detail }}</span></div><time>{{ log.time }}</time></div><p v-if="!logs.some((item) => item.detail.includes(selectedAgent?.account ?? ''))" class="modal-help">目前沒有此代理的操作紀錄。</p></div>
        </template>
        <template #footer><NSpace justify="space-between" style="width: 100%"><NButton secondary @click="selectedAgent && deactivateAgent(selectedAgent)">狀態管理</NButton><NSpace><NButton @click="showAgentDetail = false">關閉</NButton><NButton v-if="detailTab === 'commission'" type="primary" @click="saveAgentPlan">儲存傭金方案</NButton></NSpace></NSpace></template>
       </NModal>
-      <NModal v-model:show="showCommissionRecordDetail" preset="card" title="傭金帳變詳情" class="modal-card">
+       <NModal v-model:show="showCommissionRecordDetail" preset="card" title="傭金帳變詳情" class="modal-card">
         <template v-if="selectedCommissionRecord">
-          <div class="agent-detail-grid"><div><span>帳變類型</span><strong>{{ selectedCommissionRecord.recordType }}</strong></div><div><span>帳變單號</span><strong class="code-text">{{ selectedCommissionRecord.id }}</strong></div><div><span>發生時間</span><strong>{{ selectedCommissionRecord.applyAt }}</strong></div><div><span>結算週期</span><strong>{{ selectedCommissionRecord.settlePeriod }}</strong></div><div><span>帳變金額</span><strong :class="selectedCommissionRecord.recordType === '傭金發放' ? 'positive' : 'negative'">{{ selectedCommissionRecord.recordType === '傭金發放' ? '+' : '-' }}{{ selectedAgent?.currency }} {{ selectedCommissionRecord.netAmount.toLocaleString() }}</strong></div><div><span>帳變前餘額</span><strong>{{ selectedAgent?.currency }} {{ selectedCommissionRecord.balanceBefore.toLocaleString() }}</strong></div><div><span>帳變後餘額</span><strong>{{ selectedAgent?.currency }} {{ selectedCommissionRecord.balanceAfter.toLocaleString() }}</strong></div><div><span>狀態</span><NTag round :type="selectedCommissionRecord.status === '已入帳' || selectedCommissionRecord.status === '已撥款' ? 'success' : selectedCommissionRecord.status === '已駁回' ? 'error' : 'warning'">{{ selectedCommissionRecord.status }}</NTag></div><div class="full"><span>{{ selectedCommissionRecord.recordType === '傭金提領' ? '收款帳戶' : '結算方案' }}</span><strong>{{ selectedCommissionRecord.bank }}</strong></div><div class="full"><span>審核／結算資訊</span><p class="modal-help">{{ selectedCommissionRecord.reviewAt }} · {{ selectedCommissionRecord.reviewer }} · {{ selectedCommissionRecord.remark }}</p></div><div v-if="selectedCommissionRecord.recordType === '傭金提領'" class="full"><span>費用</span><strong>{{ selectedAgent?.currency }} {{ selectedCommissionRecord.fee.toLocaleString() }}</strong></div></div>
+          <div class="agent-detail-grid"><div><span>帳變類型</span><strong>{{ selectedCommissionRecord.recordType }}</strong></div><div><span>帳變單號</span><strong class="code-text">{{ selectedCommissionRecord.id }}</strong></div><div><span>紀錄產生時間</span><strong>{{ selectedCommissionRecord.applyAt }}</strong></div><div><span>異動時間</span><strong>{{ selectedCommissionRecord.reviewAt }}</strong></div><div><span>結算週期</span><strong>{{ selectedCommissionRecord.settlePeriod }}</strong></div><div><span>帳變金額</span><strong :class="selectedCommissionRecord.recordType === '傭金發放' ? 'positive' : 'negative'">{{ selectedCommissionRecord.recordType === '傭金發放' ? '+' : '-' }}{{ selectedAgent?.currency }} {{ selectedCommissionRecord.netAmount.toLocaleString() }}</strong></div><div><span>帳變前餘額</span><strong>{{ selectedAgent?.currency }} {{ selectedCommissionRecord.balanceBefore.toLocaleString() }}</strong></div><div><span>帳變後餘額</span><strong>{{ selectedAgent?.currency }} {{ selectedCommissionRecord.balanceAfter.toLocaleString() }}</strong></div><div><span>狀態</span><NTag round :type="selectedCommissionRecord.status === '成功' ? 'success' : selectedCommissionRecord.status === '失敗' ? 'error' : 'warning'">{{ selectedCommissionRecord.status }}</NTag></div><template v-if="selectedCommissionRecord.recordType === '傭金提領'"><div><span>綁定銀行</span><strong>{{ selectedCommissionRecord.bank }}</strong></div><div><span>銀行帳號</span><strong>{{ selectedCommissionRecord.bankAccount || '****9012' }}</strong></div><div><span>戶名</span><strong>{{ selectedCommissionRecord.bankHolder || 'Klaus Lin' }}</strong></div></template><template v-else><div><span>傭金方案</span><strong>{{ selectedCommissionRecord.plan || selectedCommissionRecord.bank }}</strong></div><div><span>結算基數</span><strong>{{ selectedCommissionRecord.settlementBase || '有效投注總額' }}</strong></div><div><span>系統處理結果</span><strong>{{ selectedCommissionRecord.systemResult || selectedCommissionRecord.remark }}</strong></div></template><div class="full"><span>備註</span><p class="modal-help">{{ selectedCommissionRecord.reviewer }} · {{ selectedCommissionRecord.remark }}</p></div><div v-if="selectedCommissionRecord.recordType === '傭金提領'" class="full"><span>費用</span><strong>{{ selectedAgent?.currency }} {{ selectedCommissionRecord.fee.toLocaleString() }}</strong></div></div>
         </template>
         <template #footer><NSpace justify="end"><NButton @click="showCommissionRecordDetail = false">關閉</NButton></NSpace></template>
-      </NModal>
+       </NModal>
+       <NModal v-model:show="showWithdrawalProcess" preset="card" title="傭金提領紀錄詳情／出款處理" class="modal-card">
+         <template v-if="selectedWithdrawalOrder">
+           <div class="agent-detail-grid"><div><span>帳號</span><strong>{{ selectedWithdrawalOrder.account }}</strong></div><div><span>提領單號</span><strong class="code-text">{{ selectedWithdrawalOrder.id }}</strong></div><div><span>金額</span><strong class="negative">- {{ selectedWithdrawalOrder.currency }} {{ selectedWithdrawalOrder.amount.toLocaleString() }}</strong></div><div><span>狀態</span><NTag round :type="selectedWithdrawalOrder.status === '成功' ? 'success' : selectedWithdrawalOrder.status === '失敗' ? 'error' : 'warning'">{{ selectedWithdrawalOrder.status }}</NTag></div><div><span>紀錄產生時間</span><strong>{{ selectedWithdrawalOrder.createdAt }}</strong></div><div><span>異動時間</span><strong>{{ selectedWithdrawalOrder.updatedAt }}</strong></div><div><span>綁定銀行</span><strong>{{ selectedWithdrawalOrder.bankName }}</strong></div><div><span>銀行帳號</span><strong>{{ selectedWithdrawalOrder.bankAccount }}</strong></div><div><span>戶名</span><strong>{{ selectedWithdrawalOrder.bankHolder }}</strong></div><div v-if="selectedWithdrawalOrder.failureReason" class="full"><span>失敗原因</span><strong class="negative">{{ selectedWithdrawalOrder.failureReason }}</strong></div></div>
+           <template v-if="currentRole === '運營商' && selectedWithdrawalOrder.status === '處理中'"><NDivider /><NForm label-placement="top"><NFormItem label="處理結果"><NSelect v-model:value="withdrawalProcessAction" :options="[{label:'成功：完成出款',value:'成功'},{label:'失敗：退回申請',value:'失敗'}]" /></NFormItem><NFormItem v-if="withdrawalProcessAction === '失敗'" label="失敗原因"><NInput v-model:value="withdrawalFailureReason" type="textarea" :rows="3" placeholder="請填寫人工判斷失敗原因" /></NFormItem></NForm></template>
+         </template>
+         <template #footer><NSpace justify="end"><NButton @click="showWithdrawalProcess = false">關閉</NButton><NButton v-if="currentRole === '運營商' && selectedWithdrawalOrder?.status === '處理中'" type="primary" @click="completeWithdrawalOrder">確認更新</NButton></NSpace></template>
+       </NModal>
+       <NModal v-model:show="showPayoutProcess" preset="card" title="傭金發放紀錄詳情／手動處理" class="modal-card">
+         <template v-if="selectedPayoutRecord">
+           <div class="agent-detail-grid"><div><span>帳號</span><strong>{{ selectedPayoutRecord.account }}</strong></div><div><span>發放單號</span><strong class="code-text">{{ selectedPayoutRecord.id }}</strong></div><div><span>金額</span><strong class="positive">+ {{ selectedPayoutRecord.currency }} {{ selectedPayoutRecord.amount.toLocaleString() }}</strong></div><div><span>狀態</span><NTag round :type="selectedPayoutRecord.status === '成功' ? 'success' : selectedPayoutRecord.status === '失敗' ? 'error' : 'warning'">{{ selectedPayoutRecord.status }}</NTag></div><div><span>紀錄產生時間</span><strong>{{ selectedPayoutRecord.createdAt }}</strong></div><div><span>異動時間</span><strong>{{ selectedPayoutRecord.updatedAt }}</strong></div><div><span>傭金方案</span><strong>{{ selectedPayoutRecord.plan }}</strong></div><div><span>結算週期</span><strong>{{ selectedPayoutRecord.cycle }}</strong></div><div class="full"><span>結算基數</span><strong>{{ selectedPayoutRecord.settlementBase }}</strong></div><div class="full"><span>系統處理結果</span><strong>{{ selectedPayoutRecord.systemResult }}</strong></div><div class="full"><span>備註</span><p class="modal-help">{{ selectedPayoutRecord.remark }}</p></div></div>
+           <template v-if="currentRole === '運營商' && selectedPayoutRecord.status === '處理中'"><NDivider /><NForm label-placement="top"><NFormItem label="處理結果"><NSelect v-model:value="payoutProcessAction" :options="[{label:'成功：發放至傭金錢包',value:'成功'},{label:'失敗：不予發放',value:'失敗'}]" /></NFormItem><NFormItem v-if="payoutProcessAction === '失敗'" label="失敗原因／備註"><NInput v-model:value="payoutFailureReason" type="textarea" :rows="3" placeholder="請填寫人工判斷失敗原因" /></NFormItem></NForm></template>
+         </template>
+         <template #footer><NSpace justify="end"><NButton @click="showPayoutProcess = false">關閉</NButton><NButton v-if="currentRole === '運營商' && selectedPayoutRecord?.status === '處理中'" type="primary" @click="completePayoutRecord">確認更新</NButton></NSpace></template>
+       </NModal>
       <NModal v-model:show="showTwoFactorAdmin" preset="card" title="Google Auth 管理" class="modal-card auth-admin-modal">
         <template v-if="selectedTwoFactorAgent">
           <div class="auth-admin-panel">

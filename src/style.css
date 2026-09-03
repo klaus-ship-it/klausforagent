@@ -155,7 +155,11 @@ body { background: #f4f6f8; color: #1f2937; letter-spacing: .005em; }
 .table-section-label strong { font-size: 16px; }
 .table-section-label span { font-size: 12px; }
 .filter-row { gap: 12px; }
-.filter-row-advanced { align-items: center; row-gap: 10px; }
+.filter-row-advanced { align-items: center; row-gap: 12px; column-gap: 16px; }
+.filter-field-group { display: flex; align-items: center; gap: 7px; min-height: 34px; }
+.filter-field-group > label { color: #5b6b81; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.filter-scope-group > label { margin-right: 1px; }
+.filter-search-button { align-self: flex-end; height: 34px; }
 .filter-row-advanced .filter-field { width: 170px; }
 .filter-row-advanced .filter-account { width: 210px; }
 .filter-row-advanced .filter-date { width: 240px; }

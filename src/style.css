@@ -299,4 +299,7 @@ body { background: #f4f6f8; color: #1f2937; letter-spacing: .005em; }
 .relationship-metric-filter { height: 24px; padding: 0 6px; border: 1px solid #dbe4ef; border-radius: 6px; background: #fff; color: #71809a; font-size: 10px; cursor: pointer; white-space: nowrap; }
 .relationship-metric-filter:hover, .relationship-metric-filter.active { border-color: #8eb1ef; color: #2f6fed; background: #eef4ff; }
 .relationship-clean-drawer-head, .relationship-clean-drawer-row { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.relationship-clean-header-tools { display: flex; align-items: center; gap: 12px; }
+.relationship-clean-header-tools label { display: flex; align-items: center; gap: 7px; color: #71809a; font-size: 11px; white-space: nowrap; }
+.relationship-clean-header-tools select { height: 30px; padding: 0 9px; border: 1px solid #dbe4ef; border-radius: 7px; background: #fff; color: #315fca; font-size: 11px; cursor: pointer; }
 @media (max-width: 1100px) { .relationship-clean-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 12px; } .relationship-clean-drawer { overflow-x: auto; } .relationship-clean-drawer-head, .relationship-clean-drawer-row { min-width: 900px; } }

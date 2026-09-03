@@ -645,7 +645,7 @@ function prepareCommissionResult(kind: 'withdrawal' | 'payout' | 'withdrawal-sta
   showCommissionActionConfirm.value = true
 }
 function confirmCommissionResult() {
-  if (!commissionActionRemark.value.trim()) {
+  if (pendingCommissionAction.value !== 'withdrawal-start' && !commissionActionRemark.value.trim()) {
     showNotice('warning', '請填寫原因備註', '所有人工操作都必須留下原因備註，才能完成二次確認。')
     return
   }
@@ -655,7 +655,7 @@ function confirmCommissionResult() {
       order.status = '處理中'
       order.updatedAt = operationTimestamp()
       order.processor = identity.value.account
-      order.remark = commissionActionRemark.value.trim()
+      order.remark = commissionActionRemark.value.trim() || undefined
       showCommissionActionConfirm.value = false
       showWithdrawalProcess.value = true
       showNotice('success', '已進入出款處理', '此訂單已鎖定為處理中，其他人無法重複操作。')
@@ -1568,8 +1568,8 @@ const playerColumns = computed(() => [
           <template #footer><NSpace justify="end"><NButton @click="showPayoutProcess = false">關閉</NButton><template v-if="currentRole === '運營商' && selectedPayoutRecord?.status === '處理中'"><NButton type="error" secondary @click="prepareCommissionResult('payout', '失敗')">失敗</NButton><NButton type="primary" @click="prepareCommissionResult('payout', '成功')">成功</NButton></template></NSpace></template>
         </NModal>
         <NModal v-model:show="showCommissionActionConfirm" preset="card" title="確認傭金帳務操作" class="modal-card">
-          <p class="modal-intro">即將將此筆{{ pendingCommissionAction === 'withdrawal' ? '傭金提領' : '傭金發放' }}紀錄更新為「{{ pendingCommissionResult }}」，請確認後送出。</p>
-          <NForm label-placement="top"><NFormItem label="原因備註"><NInput v-model:value="commissionActionRemark" type="textarea" :rows="4" placeholder="請填寫本次操作原因，送出後會寫入紀錄。" /></NFormItem></NForm>
+           <p class="modal-intro">即將將此筆{{ pendingCommissionAction === 'payout' ? '傭金發放' : '傭金提領' }}紀錄更新為「{{ pendingCommissionResult }}」，請確認後送出。</p>
+           <NForm v-if="pendingCommissionAction !== 'withdrawal-start'" label-placement="top"><NFormItem label="原因備註"><NInput v-model:value="commissionActionRemark" type="textarea" :rows="4" placeholder="請填寫本次操作原因，送出後會寫入紀錄。" /></NFormItem></NForm>
           <div class="auth-warning"><strong>二次確認</strong><p>此操作會更新報表狀態並保留操作人與異動時間，請確認資料無誤。</p></div>
           <template #footer><NSpace justify="end"><NButton @click="showCommissionActionConfirm = false">取消</NButton><NButton type="warning" @click="confirmCommissionResult">確認{{ pendingCommissionResult }}</NButton></NSpace></template>
         </NModal>

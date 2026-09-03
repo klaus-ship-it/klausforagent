@@ -180,6 +180,7 @@ interface CommissionWithdrawalOrder {
   bankHolder: string
   failureReason?: string
   processor?: string
+  remark?: string
 }
 
 interface CommissionPayoutRecord {
@@ -357,6 +358,10 @@ const showPayoutProcess = ref(false)
 const selectedPayoutRecord = ref<CommissionPayoutRecord | null>(null)
 const payoutProcessAction = ref<'成功' | '失敗'>('成功')
 const payoutFailureReason = ref('')
+const showCommissionActionConfirm = ref(false)
+const pendingCommissionAction = ref<'withdrawal' | 'payout' | 'withdrawal-start' | null>(null)
+const pendingCommissionResult = ref<'成功' | '失敗' | '處理中'>('成功')
+const commissionActionRemark = ref('')
 const playerPromotionRecords = computed(() => [
   { time: '2026-08-29 13:42:10', name: '首存回饋', amount: 800, status: '已完成', detail: '流水要求 8 倍，已完成 6.4 倍' },
   { time: '2026-08-18 20:16:44', name: 'VIP3 升級禮', amount: 1200, status: '已完成', detail: 'VIP3 升級獎勵' },
@@ -617,22 +622,54 @@ function openWithdrawalOrder(order: CommissionWithdrawalOrder) {
 }
 function startWithdrawalProcessing(order: CommissionWithdrawalOrder) {
   if (currentRole.value !== '運營商' || order.status !== '待處理') return
-  order.status = '處理中'
-  order.updatedAt = operationTimestamp()
-  order.processor = identity.value.account
   openWithdrawalOrder(order)
-  showNotice('success', '已進入出款處理', '此訂單已鎖定為處理中，其他人無法重複操作。')
+  prepareCommissionResult('withdrawal-start', '處理中')
+}
+function prepareCommissionResult(kind: 'withdrawal' | 'payout' | 'withdrawal-start', result: '成功' | '失敗' | '處理中') {
+  pendingCommissionAction.value = kind
+  pendingCommissionResult.value = result
+  commissionActionRemark.value = ''
+  showCommissionActionConfirm.value = true
+}
+function confirmCommissionResult() {
+  if (!commissionActionRemark.value.trim()) {
+    showNotice('warning', '請填寫原因備註', '所有人工操作都必須留下原因備註，才能完成二次確認。')
+    return
+  }
+  if (pendingCommissionAction.value === 'withdrawal-start') {
+    const order = selectedWithdrawalOrder.value
+    if (order && order.status === '待處理') {
+      order.status = '處理中'
+      order.updatedAt = operationTimestamp()
+      order.processor = identity.value.account
+      order.remark = commissionActionRemark.value.trim()
+      showCommissionActionConfirm.value = false
+      showWithdrawalProcess.value = true
+      showNotice('success', '已進入出款處理', '此訂單已鎖定為處理中，其他人無法重複操作。')
+    }
+  } else if (pendingCommissionAction.value === 'withdrawal') {
+    withdrawalProcessAction.value = pendingCommissionResult.value
+    withdrawalFailureReason.value = commissionActionRemark.value.trim()
+    completeWithdrawalOrder()
+  } else if (pendingCommissionAction.value === 'payout') {
+    payoutProcessAction.value = pendingCommissionResult.value
+    payoutFailureReason.value = commissionActionRemark.value.trim()
+    completePayoutRecord()
+  }
+  showCommissionActionConfirm.value = false
+  pendingCommissionAction.value = null
 }
 function completeWithdrawalOrder() {
   const order = selectedWithdrawalOrder.value
   if (!order || currentRole.value !== '運營商' || order.status !== '處理中') return
-  if (withdrawalProcessAction.value === '失敗' && !withdrawalFailureReason.value.trim()) {
-    showNotice('warning', '請填寫失敗原因', '失敗訂單必須記錄人工判斷原因。')
+  if (!withdrawalFailureReason.value.trim()) {
+    showNotice('warning', '請填寫原因備註', '完成出款處理前必須記錄原因備註。')
     return
   }
   order.status = withdrawalProcessAction.value
   order.updatedAt = operationTimestamp()
-  order.failureReason = withdrawalProcessAction.value === '失敗' ? withdrawalFailureReason.value.trim() : undefined
+  order.failureReason = withdrawalFailureReason.value.trim()
+  order.remark = withdrawalFailureReason.value.trim()
   showWithdrawalProcess.value = false
   showNotice('success', `出款${order.status}`, `訂單 ${order.id} 已更新為${order.status}。`)
 }
@@ -645,14 +682,14 @@ function openPayoutProcess(record: CommissionPayoutRecord) {
 function completePayoutRecord() {
   const record = selectedPayoutRecord.value
   if (!record || currentRole.value !== '運營商' || record.status !== '處理中') return
-  if (payoutProcessAction.value === '失敗' && !payoutFailureReason.value.trim()) {
-    showNotice('warning', '請填寫失敗原因', '手動失敗需要保留處理備註。')
+  if (!payoutFailureReason.value.trim()) {
+    showNotice('warning', '請填寫原因備註', '完成傭金發放處理前必須記錄原因備註。')
     return
   }
   record.status = payoutProcessAction.value
   record.updatedAt = operationTimestamp()
   record.systemResult = payoutProcessAction.value === '成功' ? '成功：已發放至傭金錢包' : '失敗：運營商手動判定未通過'
-  record.remark = payoutProcessAction.value === '失敗' ? payoutFailureReason.value.trim() : '運營商手動確認成功，傭金已發放至傭金錢包。'
+  record.remark = payoutFailureReason.value.trim()
   showPayoutProcess.value = false
   showNotice('success', `傭金發放${record.status}`, `紀錄 ${record.id} 已更新為${record.status}。`)
 }
@@ -1408,14 +1445,14 @@ const playerColumns = computed(() => [
               <div class="section-head"><div><h1>傭金發放紀錄</h1><p class="muted">系統依結算週期產生傭金發放紀錄；處理中的異常紀錄由運營商手動判定成功或失敗。</p></div><NTag type="info" round>系統結算報表</NTag></div>
               <div class="commission-cards"><NCard><div class="mini-label">待手動處理</div><div class="big-value">{{ payoutRecords.filter((row) => row.status === '處理中').length }} 筆</div><p class="muted">異常或未自動發放</p></NCard><NCard><div class="mini-label">成功發放</div><div class="big-value positive">{{ payoutRecords.filter((row) => row.status === '成功').length }} 筆</div><p class="muted">已入代理傭金錢包</p></NCard><NCard><div class="mini-label">本期發放金額</div><div class="big-value positive">TWD {{ payoutRecords.filter((row) => row.status === '成功').reduce((sum, row) => sum + row.amount, 0).toLocaleString() }}</div><p class="muted">依週期結算結果統計</p></NCard></div>
               <NCard class="filter-card filter-card-emphasis"><div class="filter-row filter-row-advanced"><div class="filter-field-group"><label>狀態</label><NSelect v-model:value="payoutReportStatus" clearable placeholder="全部狀態" :options="[{label:'處理中',value:'處理中'},{label:'成功',value:'成功'},{label:'失敗',value:'失敗'}]" class="filter-select" /></div><div class="filter-field-group filter-date-group"><label>紀錄產生時間</label><NDatePicker v-model:value="payoutReportDateRange" type="daterange" clearable format="yyyy-MM-dd" placeholder="選擇時間區段" class="filter-date" /></div><div class="filter-field-group filter-account-group"><label>帳號／單號</label><NInput v-model:value="payoutReportKeyword" clearable placeholder="搜尋代理帳號、方案或單號" class="filter-field" /></div></div></NCard>
-              <NCard :bordered="false" class="table-card commission-report-card"><div class="commission-report-head"><span>帳號</span><span>金額</span><span>狀態</span><span>紀錄產生時間</span><span>異動時間</span><span>操作</span></div><div v-for="record in filteredPayoutRecords" :key="record.id" class="commission-report-row"><div><strong>{{ record.account }}</strong><small>{{ record.id }}</small></div><strong class="positive">+ {{ record.currency }} {{ record.amount.toLocaleString() }}</strong><NTag size="small" round :type="record.status === '成功' ? 'success' : record.status === '失敗' ? 'error' : 'warning'">{{ record.status }}</NTag><time>{{ record.createdAt }}</time><time>{{ record.updatedAt }}</time><div class="report-action-group"><NButton size="small" quaternary @click="openPayoutProcess(record)">查看詳情</NButton><NButton v-if="currentRole === '運營商' && record.status === '處理中'" size="small" type="primary" @click="openPayoutProcess(record)">手動處理</NButton></div></div><p v-if="!filteredPayoutRecords.length" class="modal-help">目前沒有符合條件的傭金發放紀錄。</p></NCard>
+              <NCard :bordered="false" class="table-card commission-report-card"><div class="commission-report-head"><span>帳號／訂單編號</span><span>金額</span><span>狀態</span><span>紀錄產生時間</span><span>異動時間</span><span>操作</span></div><div v-for="record in filteredPayoutRecords" :key="record.id" class="commission-report-row"><div><strong>{{ record.account }}</strong><small>訂單編號：{{ record.id }}</small></div><strong class="positive">+ {{ record.currency }} {{ record.amount.toLocaleString() }}</strong><NTag size="small" round :type="record.status === '成功' ? 'success' : record.status === '失敗' ? 'error' : 'warning'">{{ record.status }}</NTag><time>{{ record.createdAt }}</time><time>{{ record.updatedAt }}</time><div class="report-action-group"><NButton size="small" quaternary @click="openPayoutProcess(record)">查看詳情</NButton><NButton v-if="currentRole === '運營商' && record.status === '處理中'" size="small" type="primary" @click="openPayoutProcess(record)">手動處理</NButton></div></div><p v-if="!filteredPayoutRecords.length" class="modal-help">目前沒有符合條件的傭金發放紀錄。</p></NCard>
             </section>
 
             <section v-else-if="activeKey === 'withdrawal'">
               <div class="section-head"><div><h1>傭金提領紀錄</h1><p class="muted">代理提交提領後先為待處理；運營商開始出款後鎖定為處理中，完成後更新成功或失敗。</p></div><NButton v-if="currentRole !== '運營商'" type="primary" @click="showWithdrawal = true">申請提領</NButton></div>
               <div class="commission-cards"><NCard><div class="mini-label">待處理</div><div class="big-value">{{ withdrawalOrders.filter((row) => row.status === '待處理').length }} 筆</div><p class="muted">等待運營商出款</p></NCard><NCard><div class="mini-label">處理中</div><div class="big-value">{{ withdrawalOrders.filter((row) => row.status === '處理中').length }} 筆</div><p class="muted">已鎖定，不可重複處理</p></NCard><NCard><div class="mini-label">成功／失敗</div><div class="big-value positive">{{ withdrawalOrders.filter((row) => row.status === '成功').length }}／{{ withdrawalOrders.filter((row) => row.status === '失敗').length }}</div><p class="muted">完成結果統計</p></NCard></div>
               <NCard class="filter-card filter-card-emphasis"><div class="filter-row filter-row-advanced"><div class="filter-field-group"><label>狀態</label><NSelect v-model:value="withdrawalReportStatus" clearable placeholder="全部狀態" :options="[{label:'待處理',value:'待處理'},{label:'處理中',value:'處理中'},{label:'成功',value:'成功'},{label:'失敗',value:'失敗'}]" class="filter-select" /></div><div class="filter-field-group filter-date-group"><label>紀錄產生時間</label><NDatePicker v-model:value="withdrawalReportDateRange" type="daterange" clearable format="yyyy-MM-dd" placeholder="選擇時間區段" class="filter-date" /></div><div class="filter-field-group filter-account-group"><label>帳號／單號</label><NInput v-model:value="withdrawalReportKeyword" clearable placeholder="搜尋代理帳號、銀行或單號" class="filter-field" /></div></div></NCard>
-              <NCard :bordered="false" class="table-card commission-report-card"><div class="commission-report-head"><span>帳號</span><span>金額</span><span>狀態</span><span>紀錄產生時間</span><span>異動時間</span><span>操作</span></div><div v-for="order in filteredWithdrawalOrders" :key="order.id" class="commission-report-row"><div><strong>{{ order.account }}</strong><small>{{ order.id }}</small></div><strong class="negative">- {{ order.currency }} {{ order.amount.toLocaleString() }}</strong><NTag size="small" round :type="order.status === '成功' ? 'success' : order.status === '失敗' ? 'error' : 'warning'">{{ order.status }}</NTag><time>{{ order.createdAt }}</time><time>{{ order.updatedAt }}</time><div class="report-action-group"><NButton size="small" quaternary @click="openWithdrawalOrder(order)">查看詳情</NButton><NButton v-if="currentRole === '運營商' && order.status === '待處理'" size="small" type="primary" @click="startWithdrawalProcessing(order)">出款處理</NButton><NButton v-else-if="currentRole === '運營商' && order.status === '處理中'" size="small" disabled>處理中</NButton></div></div><p v-if="!filteredWithdrawalOrders.length" class="modal-help">目前沒有符合條件的傭金提領紀錄。</p></NCard>
+              <NCard :bordered="false" class="table-card commission-report-card"><div class="commission-report-head"><span>帳號／訂單編號</span><span>金額</span><span>狀態</span><span>紀錄產生時間</span><span>異動時間</span><span>操作</span></div><div v-for="order in filteredWithdrawalOrders" :key="order.id" class="commission-report-row"><div><strong>{{ order.account }}</strong><small>訂單編號：{{ order.id }}</small></div><strong class="negative">- {{ order.currency }} {{ order.amount.toLocaleString() }}</strong><NTag size="small" round :type="order.status === '成功' ? 'success' : order.status === '失敗' ? 'error' : 'warning'">{{ order.status }}</NTag><time>{{ order.createdAt }}</time><time>{{ order.updatedAt }}</time><div class="report-action-group"><NButton size="small" quaternary @click="openWithdrawalOrder(order)">查看詳情</NButton><NButton v-if="currentRole === '運營商' && order.status === '待處理'" size="small" type="primary" @click="startWithdrawalProcessing(order)">出款處理</NButton><NButton v-else-if="currentRole === '運營商' && order.status === '處理中'" size="small" disabled>處理中</NButton></div></div><p v-if="!filteredWithdrawalOrders.length" class="modal-help">目前沒有符合條件的傭金提領紀錄。</p></NCard>
             </section>
 
             <section v-else-if="activeKey === 'reports'">
@@ -1505,19 +1542,25 @@ const playerColumns = computed(() => [
        </NModal>
        <NModal v-model:show="showWithdrawalProcess" preset="card" title="傭金提領紀錄詳情／出款處理" class="modal-card">
          <template v-if="selectedWithdrawalOrder">
-           <div class="agent-detail-grid"><div><span>帳號</span><strong>{{ selectedWithdrawalOrder.account }}</strong></div><div><span>提領單號</span><strong class="code-text">{{ selectedWithdrawalOrder.id }}</strong></div><div><span>金額</span><strong class="negative">- {{ selectedWithdrawalOrder.currency }} {{ selectedWithdrawalOrder.amount.toLocaleString() }}</strong></div><div><span>狀態</span><NTag round :type="selectedWithdrawalOrder.status === '成功' ? 'success' : selectedWithdrawalOrder.status === '失敗' ? 'error' : 'warning'">{{ selectedWithdrawalOrder.status }}</NTag></div><div><span>紀錄產生時間</span><strong>{{ selectedWithdrawalOrder.createdAt }}</strong></div><div><span>異動時間</span><strong>{{ selectedWithdrawalOrder.updatedAt }}</strong></div><div><span>綁定銀行</span><strong>{{ selectedWithdrawalOrder.bankName }}</strong></div><div><span>銀行帳號</span><strong>{{ selectedWithdrawalOrder.bankAccount }}</strong></div><div><span>戶名</span><strong>{{ selectedWithdrawalOrder.bankHolder }}</strong></div><div v-if="selectedWithdrawalOrder.failureReason" class="full"><span>失敗原因</span><strong class="negative">{{ selectedWithdrawalOrder.failureReason }}</strong></div></div>
-           <template v-if="currentRole === '運營商' && selectedWithdrawalOrder.status === '處理中'"><NDivider /><NForm label-placement="top"><NFormItem label="處理結果"><NSelect v-model:value="withdrawalProcessAction" :options="[{label:'成功：完成出款',value:'成功'},{label:'失敗：退回申請',value:'失敗'}]" /></NFormItem><NFormItem v-if="withdrawalProcessAction === '失敗'" label="失敗原因"><NInput v-model:value="withdrawalFailureReason" type="textarea" :rows="3" placeholder="請填寫人工判斷失敗原因" /></NFormItem></NForm></template>
+           <div class="agent-detail-grid"><div><span>帳號</span><strong>{{ selectedWithdrawalOrder.account }}</strong></div><div><span>訂單編號</span><strong class="code-text">{{ selectedWithdrawalOrder.id }}</strong></div><div><span>金額</span><strong class="negative">- {{ selectedWithdrawalOrder.currency }} {{ selectedWithdrawalOrder.amount.toLocaleString() }}</strong></div><div><span>狀態</span><NTag round :type="selectedWithdrawalOrder.status === '成功' ? 'success' : selectedWithdrawalOrder.status === '失敗' ? 'error' : 'warning'">{{ selectedWithdrawalOrder.status }}</NTag></div><div><span>紀錄產生時間</span><strong>{{ selectedWithdrawalOrder.createdAt }}</strong></div><div><span>異動時間</span><strong>{{ selectedWithdrawalOrder.updatedAt }}</strong></div><div><span>綁定銀行</span><strong>{{ selectedWithdrawalOrder.bankName }}</strong></div><div><span>銀行帳號</span><strong>{{ selectedWithdrawalOrder.bankAccount }}</strong></div><div><span>戶名</span><strong>{{ selectedWithdrawalOrder.bankHolder }}</strong></div><div v-if="selectedWithdrawalOrder.failureReason && selectedWithdrawalOrder.status === '失敗'" class="full"><span>失敗原因</span><strong class="negative">{{ selectedWithdrawalOrder.failureReason }}</strong></div><div v-if="selectedWithdrawalOrder.remark" class="full"><span>操作備註</span><p class="modal-help">{{ selectedWithdrawalOrder.remark }}</p></div></div>
+            <p v-if="currentRole === '運營商' && selectedWithdrawalOrder.status === '處理中'" class="modal-help">請選擇出款結果；點擊後將進入二次確認並填寫原因備註。</p>
          </template>
-         <template #footer><NSpace justify="end"><NButton @click="showWithdrawalProcess = false">關閉</NButton><NButton v-if="currentRole === '運營商' && selectedWithdrawalOrder?.status === '處理中'" type="primary" @click="completeWithdrawalOrder">確認更新</NButton></NSpace></template>
+          <template #footer><NSpace justify="end"><NButton @click="showWithdrawalProcess = false">關閉</NButton><template v-if="currentRole === '運營商' && selectedWithdrawalOrder?.status === '處理中'"><NButton type="error" secondary @click="prepareCommissionResult('withdrawal', '失敗')">失敗</NButton><NButton type="primary" @click="prepareCommissionResult('withdrawal', '成功')">成功</NButton></template></NSpace></template>
        </NModal>
        <NModal v-model:show="showPayoutProcess" preset="card" title="傭金發放紀錄詳情／手動處理" class="modal-card">
          <template v-if="selectedPayoutRecord">
-           <div class="agent-detail-grid"><div><span>帳號</span><strong>{{ selectedPayoutRecord.account }}</strong></div><div><span>發放單號</span><strong class="code-text">{{ selectedPayoutRecord.id }}</strong></div><div><span>金額</span><strong class="positive">+ {{ selectedPayoutRecord.currency }} {{ selectedPayoutRecord.amount.toLocaleString() }}</strong></div><div><span>狀態</span><NTag round :type="selectedPayoutRecord.status === '成功' ? 'success' : selectedPayoutRecord.status === '失敗' ? 'error' : 'warning'">{{ selectedPayoutRecord.status }}</NTag></div><div><span>紀錄產生時間</span><strong>{{ selectedPayoutRecord.createdAt }}</strong></div><div><span>異動時間</span><strong>{{ selectedPayoutRecord.updatedAt }}</strong></div><div><span>傭金方案</span><strong>{{ selectedPayoutRecord.plan }}</strong></div><div><span>結算週期</span><strong>{{ selectedPayoutRecord.cycle }}</strong></div><div class="full"><span>結算基數</span><strong>{{ selectedPayoutRecord.settlementBase }}</strong></div><div class="full"><span>系統處理結果</span><strong>{{ selectedPayoutRecord.systemResult }}</strong></div><div class="full"><span>備註</span><p class="modal-help">{{ selectedPayoutRecord.remark }}</p></div></div>
-           <template v-if="currentRole === '運營商' && selectedPayoutRecord.status === '處理中'"><NDivider /><NForm label-placement="top"><NFormItem label="處理結果"><NSelect v-model:value="payoutProcessAction" :options="[{label:'成功：發放至傭金錢包',value:'成功'},{label:'失敗：不予發放',value:'失敗'}]" /></NFormItem><NFormItem v-if="payoutProcessAction === '失敗'" label="失敗原因／備註"><NInput v-model:value="payoutFailureReason" type="textarea" :rows="3" placeholder="請填寫人工判斷失敗原因" /></NFormItem></NForm></template>
+           <div class="agent-detail-grid"><div><span>帳號</span><strong>{{ selectedPayoutRecord.account }}</strong></div><div><span>訂單編號</span><strong class="code-text">{{ selectedPayoutRecord.id }}</strong></div><div><span>金額</span><strong class="positive">+ {{ selectedPayoutRecord.currency }} {{ selectedPayoutRecord.amount.toLocaleString() }}</strong></div><div><span>狀態</span><NTag round :type="selectedPayoutRecord.status === '成功' ? 'success' : selectedPayoutRecord.status === '失敗' ? 'error' : 'warning'">{{ selectedPayoutRecord.status }}</NTag></div><div><span>紀錄產生時間</span><strong>{{ selectedPayoutRecord.createdAt }}</strong></div><div><span>異動時間</span><strong>{{ selectedPayoutRecord.updatedAt }}</strong></div><div><span>傭金方案</span><strong>{{ selectedPayoutRecord.plan }}</strong></div><div><span>結算週期</span><strong>{{ selectedPayoutRecord.cycle }}</strong></div><div class="full"><span>結算基數</span><strong>{{ selectedPayoutRecord.settlementBase }}</strong></div><div class="full"><span>系統處理結果</span><strong>{{ selectedPayoutRecord.systemResult }}</strong></div><div class="full"><span>備註</span><p class="modal-help">{{ selectedPayoutRecord.remark }}</p></div></div>
+            <p v-if="currentRole === '運營商' && selectedPayoutRecord.status === '處理中'" class="modal-help">請選擇系統處理結果；點擊後將進入二次確認並填寫原因備註。</p>
          </template>
-         <template #footer><NSpace justify="end"><NButton @click="showPayoutProcess = false">關閉</NButton><NButton v-if="currentRole === '運營商' && selectedPayoutRecord?.status === '處理中'" type="primary" @click="completePayoutRecord">確認更新</NButton></NSpace></template>
-       </NModal>
-      <NModal v-model:show="showTwoFactorAdmin" preset="card" title="Google Auth 管理" class="modal-card auth-admin-modal">
+          <template #footer><NSpace justify="end"><NButton @click="showPayoutProcess = false">關閉</NButton><template v-if="currentRole === '運營商' && selectedPayoutRecord?.status === '處理中'"><NButton type="error" secondary @click="prepareCommissionResult('payout', '失敗')">失敗</NButton><NButton type="primary" @click="prepareCommissionResult('payout', '成功')">成功</NButton></template></NSpace></template>
+        </NModal>
+        <NModal v-model:show="showCommissionActionConfirm" preset="card" title="確認傭金帳務操作" class="modal-card">
+          <p class="modal-intro">即將將此筆{{ pendingCommissionAction === 'withdrawal' ? '傭金提領' : '傭金發放' }}紀錄更新為「{{ pendingCommissionResult }}」，請確認後送出。</p>
+          <NForm label-placement="top"><NFormItem label="原因備註"><NInput v-model:value="commissionActionRemark" type="textarea" :rows="4" placeholder="請填寫本次操作原因，送出後會寫入紀錄。" /></NFormItem></NForm>
+          <div class="auth-warning"><strong>二次確認</strong><p>此操作會更新報表狀態並保留操作人與異動時間，請確認資料無誤。</p></div>
+          <template #footer><NSpace justify="end"><NButton @click="showCommissionActionConfirm = false">取消</NButton><NButton type="warning" @click="confirmCommissionResult">確認{{ pendingCommissionResult }}</NButton></NSpace></template>
+        </NModal>
+       <NModal v-model:show="showTwoFactorAdmin" preset="card" title="Google Auth 管理" class="modal-card auth-admin-modal">
         <template v-if="selectedTwoFactorAgent">
           <div class="auth-admin-panel">
             <div class="auth-admin-heading"><div><span>代理帳號</span><strong>{{ selectedTwoFactorAgent.account }}</strong></div><NTag :type="selectedTwoFactorAgent.twoFactor === '已啟用' ? 'success' : 'warning'" round>{{ selectedTwoFactorAgent.twoFactor || '未啟用' }}</NTag></div>

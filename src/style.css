@@ -262,7 +262,7 @@ body { background: #f4f6f8; color: #1f2937; letter-spacing: .005em; }
 /* Agent relationship report: one readable expandable surface per audience. */
 .agent-info-panel { display: none !important; }
 .content-area { position: relative; }
-.relationship-clean-overlay { position: absolute; top: 160px; left: 352px; right: 34px; z-index: 3; }
+.relationship-clean-overlay { position: absolute; top: 218px; left: 352px; right: 34px; z-index: 3; }
 .relationship-clean-panel { padding: 20px; border: 1px solid #dbe4ef; border-radius: 14px; background: #fff; box-shadow: 0 8px 24px rgba(36, 52, 81, .07); }
 .relationship-clean-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-bottom: 16px; border-bottom: 1px solid #e8edf4; }
 .relationship-clean-header span { display: block; color: #8490a3; font-size: 11px; }

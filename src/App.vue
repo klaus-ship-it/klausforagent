@@ -936,7 +936,9 @@ function applyPlayerFilters() {
 
 function selectNav(key: string) {
   activeKey.value = key as NavKey
-  if (key === 'agents') showAgentDetail.value = false
+  // 代理詳情報表是代理管理頁內的 overlay；離開主介面時清除詳情狀態，避免覆蓋其他頁面。
+  showAgentDetail.value = false
+  showAgentDetailModal.value = false
   if (key === 'players') showPlayerDetail.value = false
   search.value = ''
   playerSearch.value = ''
@@ -1635,7 +1637,7 @@ const playerColumns = computed(() => [
               <div class="profile-grid"><NCard title="個人資料"><div class="profile-list"><div><span>代理帳號</span><strong>{{ identity.account }}</strong></div><div><span>角色</span><strong>{{ identity.label }}</strong></div><div><span>所屬幣別</span><strong>{{ identity.currency }}</strong></div><div><span>手機</span><strong>09******123</strong></div><div><span>Email</span><strong>ka********@example.com</strong></div><div><span>登入密碼</span><strong>••••••••</strong><NButton size="small" quaternary>修改</NButton></div></div></NCard><NCard title="傭金收款銀行卡"><div class="bank-card"><div class="bank-brand">台新銀行</div><strong>**** **** 9012</strong><span>戶名：Klaus Lin</span><NTag type="success" round>已驗證</NTag></div><NButton type="primary" secondary @click="showBankCard = true">管理銀行卡</NButton><p class="modal-help">銀行卡僅用於傭金提領，提領時需選擇已驗證的收款帳戶。</p></NCard></div>
               <NCard title="角色使用說明" class="role-guide"><div class="role-guide-grid"><div><NTag type="info" round>運營商</NTag><p>建立總代理、設定傭金模式與結算週期，查看全平台代理網絡。</p></div><div><NTag type="success" round>總代理</NTag><p>建立直屬代理、設定反傭比例，查看全部下級報表。</p></div><div><NTag round>一般代理</NTag><p>管理自己的直屬下級，僅查看所屬代理線資料。</p></div></div></NCard>
             </section>
-          <div v-if="showAgentDetail && detailTab === 'relationship' && selectedAgent" class="relationship-clean-panel relationship-clean-overlay">
+          <div v-if="activeKey === 'agents' && showAgentDetail && detailTab === 'relationship' && selectedAgent" class="relationship-clean-panel relationship-clean-overlay">
             <div class="relationship-clean-header">
               <div class="relationship-clean-header-main"><div class="relationship-agent-total"><span>代理總人數</span><strong>{{ relationshipRows('agents', 'all').length }} 人</strong></div><div class="relationship-player-total"><span>玩家總人數</span><strong>{{ relationshipRows('players', 'all').length }} 人</strong></div><div><span>完整樹狀路徑</span><strong>{{ displayAgentPath(selectedAgent.path) }}</strong><p v-if="selectedAgent.pendingTransferTargetPath" class="pending-transfer">預約新代理線：{{ displayAgentPath(selectedAgent.pendingTransferTargetPath) }}（{{ selectedAgent.pendingTransferEffectiveAt }} 生效）</p></div></div>
               <div class="relationship-clean-header-tools"><label>資料範圍<select v-model="relationshipFilterScope"><option value="history">歷史</option><option value="cycle">結算週期</option></select></label><NButton v-if="currentRole === '運營商' || currentRole === '總代理'" class="agent-transfer-button" type="primary" :disabled="selectedAgent.level === '總代理'" @click="openAgentTransfer(selectedAgent)">更換代理線</NButton></div>

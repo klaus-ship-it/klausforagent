@@ -333,6 +333,14 @@ body { background: #f4f6f8; color: #1f2937; letter-spacing: .005em; }
 .agent-downline-plan-row { display: grid; grid-template-columns: 1.8fr .6fr .8fr 1.6fr; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid #edf1f6; font-size: 12px; }
 .agent-downline-plan-row small { display: block; margin-top: 4px; }
 .agent-downline-plan-agents { display: flex; flex-wrap: wrap; gap: 5px; }
+.upstream-plan-card { background: #fbfcff; }
+.upstream-plan-row { display: grid; grid-template-columns: 1.35fr 1.15fr 1.35fr .8fr .75fr .7fr .8fr .65fr; gap: 14px; align-items: center; padding: 5px 2px; }
+.upstream-plan-row > div { min-width: 0; }
+.upstream-plan-row span { display: block; color: #8390a5; font-size: 11px; margin-bottom: 4px; }
+.upstream-plan-row strong, .upstream-plan-row code { display: block; color: #243b61; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upstream-plan-row code { color: #315fca; font-family: ui-monospace, monospace; }
+.plan-table-own { min-width: 980px; }
+.plan-table-own .plan-table-head, .plan-table-own .plan-table-row { grid-template-columns: 1.8fr 1.2fr .8fr .8fr .8fr 1fr .7fr 1.35fr; }
 .plan-table-row { position: relative; }
 .plan-table-row .table-actions > .n-button:first-child { position: absolute; left: 61%; top: 50%; transform: translateY(-50%); z-index: 1; font-size: 0; }
 .plan-table-row .table-actions > .n-button:first-child::after { content: '展開'; font-size: 11px; }

@@ -306,4 +306,7 @@ body { background: #f4f6f8; color: #1f2937; letter-spacing: .005em; }
 .relationship-agent-total { min-width: 108px; padding-right: 26px; border-right: 1px solid #e5ebf3; }
 .relationship-agent-total span { display: block; color: #8490a3; font-size: 11px; }
 .relationship-agent-total strong { display: block; margin-top: 6px; color: #315fca; font-size: 18px; white-space: nowrap; }
+.relationship-player-total { min-width: 108px; padding-right: 26px; border-right: 1px solid #e5ebf3; }
+.relationship-player-total span { display: block; color: #8490a3; font-size: 11px; }
+.relationship-player-total strong { display: block; margin-top: 6px; color: #2a8b78; font-size: 18px; white-space: nowrap; }
 @media (max-width: 1100px) { .relationship-clean-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 12px; } .relationship-clean-drawer { overflow-x: auto; } .relationship-clean-drawer-head, .relationship-clean-drawer-row { min-width: 900px; } }

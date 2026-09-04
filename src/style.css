@@ -342,7 +342,5 @@ body { background: #f4f6f8; color: #1f2937; letter-spacing: .005em; }
 .plan-table-own { min-width: 980px; }
 .plan-table-own .plan-table-head, .plan-table-own .plan-table-row { grid-template-columns: 1.8fr 1.2fr .8fr .8fr .8fr 1fr .7fr 1.35fr; }
 .plan-table-row { position: relative; }
-.plan-table:not(.plan-table-own) .plan-table-row .table-actions > .n-button:first-child { position: absolute; left: 68%; top: 50%; transform: translateY(-50%); z-index: 1; font-size: 0; }
-.plan-table:not(.plan-table-own) .plan-table-row .table-actions > .n-button:first-child::after { content: '展開'; font-size: 11px; }
 .plan-assignee-count { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .plan-assignee-count .n-button { padding: 0 4px; font-size: 11px; }

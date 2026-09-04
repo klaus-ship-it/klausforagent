@@ -344,3 +344,8 @@ body { background: #f4f6f8; color: #1f2937; letter-spacing: .005em; }
 .plan-table-row { position: relative; }
 .plan-assignee-count { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .plan-assignee-count .n-button { padding: 0 4px; font-size: 11px; }
+.plan-filter-card { margin: 12px 0 16px; }
+.plan-filter-row { display: grid; grid-template-columns: repeat(2, minmax(150px, 1fr)); gap: 12px 16px; align-items: end; }
+.plan-report-filter-card .plan-filter-row { grid-template-columns: repeat(6, minmax(130px, 1fr)); }
+@media (max-width: 1200px) { .plan-report-filter-card .plan-filter-row { grid-template-columns: repeat(3, minmax(150px, 1fr)); } }
+@media (max-width: 700px) { .plan-filter-row, .plan-report-filter-card .plan-filter-row { grid-template-columns: 1fr; } }

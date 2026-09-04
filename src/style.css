@@ -310,3 +310,20 @@ body { background: #f4f6f8; color: #1f2937; letter-spacing: .005em; }
 .relationship-player-total span { display: block; color: #8490a3; font-size: 11px; }
 .relationship-player-total strong { display: block; margin-top: 6px; color: #2a8b78; font-size: 18px; white-space: nowrap; }
 @media (max-width: 1100px) { .relationship-clean-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 12px; } .relationship-clean-drawer { overflow-x: auto; } .relationship-clean-drawer-head, .relationship-clean-drawer-row { min-width: 900px; } }
+.plan-assigned-detail { grid-column: 1 / -1; margin: 8px 0 0; padding: 12px 14px; border: 1px solid #e2e9f4; border-radius: 9px; background: #f8faff; }
+.plan-assigned-head, .plan-assigned-row { display: grid; grid-template-columns: 1.2fr .7fr 1fr 1fr; gap: 10px; align-items: center; }
+.plan-assigned-head { color: #8a96aa; font-size: 11px; padding-bottom: 7px; border-bottom: 1px solid #e5ebf4; }
+.plan-assigned-row { padding: 8px 0; font-size: 12px; border-bottom: 1px solid #edf1f6; }
+.plan-assigned-row:last-child { border-bottom: 0; }
+.plan-assigned-detail .modal-help { margin: 8px 0 0; }
+.agent-plan-overview { display: flex; flex-direction: column; gap: 18px; }
+.agent-plan-overview-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid #e7edf5; }
+.agent-plan-overview-head span, .agent-plan-overview-grid span { display: block; color: #8390a5; font-size: 12px; margin-bottom: 5px; }
+.agent-plan-overview-head strong { font-size: 20px; color: #1f3f73; }
+.agent-plan-overview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.agent-plan-overview-grid > div { padding: 13px 15px; border: 1px solid #e7ecf4; border-radius: 9px; background: #fbfcfe; }
+.agent-plan-overview-grid strong { color: #243b61; font-size: 13px; }
+.agent-plan-overview-section { padding-top: 4px; }
+.agent-downline-plan-row { display: grid; grid-template-columns: 1.8fr .6fr .8fr 1.6fr; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid #edf1f6; font-size: 12px; }
+.agent-downline-plan-row small { display: block; margin-top: 4px; }
+.agent-downline-plan-agents { display: flex; flex-wrap: wrap; gap: 5px; }

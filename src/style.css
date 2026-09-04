@@ -324,6 +324,17 @@ body { background: #f4f6f8; color: #1f2937; letter-spacing: .005em; }
 .agent-plan-overview-grid > div { padding: 13px 15px; border: 1px solid #e7ecf4; border-radius: 9px; background: #fbfcfe; }
 .agent-plan-overview-grid strong { color: #243b61; font-size: 13px; }
 .agent-plan-overview-section { padding-top: 4px; }
+.agent-plan-overview.detail-page-card { display: none !important; }
+.commission-plan-overlay { position: absolute; top: 218px; left: 352px; right: 34px; z-index: 3; max-height: calc(100vh - 240px); overflow: auto; }
+.commission-plan-overlay-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding-bottom: 14px; margin-bottom: 12px; border-bottom: 1px solid #e7edf5; }
+.commission-plan-overlay-head span { display: block; color: #8390a5; font-size: 12px; margin-bottom: 4px; }
+.commission-plan-overlay-head strong { display: block; color: #1f3f73; font-size: 18px; }
+.commission-plan-overlay-head .muted { margin-top: 5px; }
 .agent-downline-plan-row { display: grid; grid-template-columns: 1.8fr .6fr .8fr 1.6fr; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid #edf1f6; font-size: 12px; }
 .agent-downline-plan-row small { display: block; margin-top: 4px; }
 .agent-downline-plan-agents { display: flex; flex-wrap: wrap; gap: 5px; }
+.plan-table-row { position: relative; }
+.plan-table-row .table-actions > .n-button:first-child { position: absolute; left: 61%; top: 50%; transform: translateY(-50%); z-index: 1; font-size: 0; }
+.plan-table-row .table-actions > .n-button:first-child::after { content: '展開'; font-size: 11px; }
+.plan-assignee-count { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.plan-assignee-count .n-button { padding: 0 4px; font-size: 11px; }

@@ -570,7 +570,7 @@ const logs = ref<OperationLog[]>([
 const navGroups = computed(() => [
   { title: '工作台', items: [{ key: 'dashboard', label: '營運概覽', icon: GridOutline }] },
   { title: '下級管理', items: [{ key: 'agents', label: '代理管理', icon: GitNetworkOutline }, { key: 'players', label: '玩家管理', icon: PeopleOutline }, { key: 'codes', label: '傭金方案設定', icon: ShareSocialOutline }] },
-  { title: '傭金與報表', items: [{ key: 'commissionPlans', label: '傭金方案設定', icon: CashOutline }, { key: 'commission', label: '傭金發放紀錄', icon: CashOutline }, { key: 'withdrawal', label: '傭金提領紀錄', icon: WalletOutline }, { key: 'reports', label: '下級報表', icon: BarChartOutline }] },
+  { title: '傭金與報表', items: [{ key: 'commissionPlans', label: '傭金方案', icon: CashOutline }, { key: 'commission', label: '傭金發放紀錄', icon: CashOutline }, { key: 'withdrawal', label: '傭金提領紀錄', icon: WalletOutline }, { key: 'reports', label: '下級報表', icon: BarChartOutline }] },
   { title: '系統', items: [{ key: 'logs', label: '操作日誌', icon: ListOutline }, { key: 'profile', label: '帳戶設定', icon: PeopleOutline }] },
 ] as const)
 
@@ -640,6 +640,13 @@ const selectedPlanConfig = computed(() => planConfig(selectedPlan.value || commi
 const lineModel = computed(() => currentRole.value === '運營商' ? null : (agentRows.value.find((row) => row.account === identity.value.account)?.model ?? '返佣'))
 const selectedAgentPlan = computed(() => selectedAgent.value ? planForAgent(selectedAgent.value) : undefined)
 const selectedAgentCreatedPlans = computed(() => selectedAgent.value ? plansCreatedBy(selectedAgent.value.account) : [])
+const selectedAgentCommissionPlans = computed(() => {
+  const plans = selectedAgentPlan.value ? [selectedAgentPlan.value] : []
+  selectedAgentCreatedPlans.value.forEach((plan) => {
+    if (!plans.some((item) => item.id === plan.id)) plans.push(plan)
+  })
+  return plans
+})
 const currentAgentForPlan = computed(() => agentRows.value.find((row) => row.account === identity.value.account))
 const visiblePlans = computed(() => currentRole.value === '運營商'
   ? commissionPlans.value
@@ -1637,6 +1644,10 @@ const playerColumns = computed(() => [
               <div class="profile-grid"><NCard title="個人資料"><div class="profile-list"><div><span>代理帳號</span><strong>{{ identity.account }}</strong></div><div><span>角色</span><strong>{{ identity.label }}</strong></div><div><span>所屬幣別</span><strong>{{ identity.currency }}</strong></div><div><span>手機</span><strong>09******123</strong></div><div><span>Email</span><strong>ka********@example.com</strong></div><div><span>登入密碼</span><strong>••••••••</strong><NButton size="small" quaternary>修改</NButton></div></div></NCard><NCard title="傭金收款銀行卡"><div class="bank-card"><div class="bank-brand">台新銀行</div><strong>**** **** 9012</strong><span>戶名：Klaus Lin</span><NTag type="success" round>已驗證</NTag></div><NButton type="primary" secondary @click="showBankCard = true">管理銀行卡</NButton><p class="modal-help">銀行卡僅用於傭金提領，提領時需選擇已驗證的收款帳戶。</p></NCard></div>
               <NCard title="角色使用說明" class="role-guide"><div class="role-guide-grid"><div><NTag type="info" round>運營商</NTag><p>建立總代理、設定傭金模式與結算週期，查看全平台代理網絡。</p></div><div><NTag type="success" round>總代理</NTag><p>建立直屬代理、設定反傭比例，查看全部下級報表。</p></div><div><NTag round>一般代理</NTag><p>管理自己的直屬下級，僅查看所屬代理線資料。</p></div></div></NCard>
             </section>
+          <div v-if="activeKey === 'agents' && showAgentDetail && detailTab === 'commission' && selectedAgent" class="relationship-clean-panel commission-plan-overlay">
+            <div class="commission-plan-overlay-head"><div><span>代理傭金方案</span><strong>{{ selectedAgent.account }} · {{ selectedAgentCommissionPlans.length }} 個方案</strong><p class="muted">包含上級給予此代理的方案，以及此代理建立給直屬下級的方案。</p></div><NTag type="info" round>唯讀查看</NTag></div>
+            <div class="plan-table-wrap"><div class="plan-table"><div class="plan-table-head"><span>方案名稱</span><span>方案推廣碼</span><span>建立代理</span><span>傭金模式</span><span>結算週期</span><span>默認點數</span><span>套用代理</span><span>狀態</span><span>操作</span></div><div v-for="plan in selectedAgentCommissionPlans" :key="plan.id" class="plan-table-row"><div><strong>{{ plan.name }}</strong><small>{{ plan.description }}</small></div><span class="code-text">{{ plan.promoCode }}</span><span>{{ plan.createdBy || plan.parentAccount }}</span><div><NTag size="small" :type="plan.model === '佔成' ? 'warning' : 'success'" round>{{ plan.model }}</NTag><small class="mode-summary">{{ planConfigSummary(plan) }}</small></div><span>{{ plan.cycle }}</span><span>{{ plan.allocationRate }}%</span><span class="plan-assignee-count">{{ planAppliedAgents(plan).length }} 位<NButton quaternary size="tiny" class="plan-expand-inline" @click="togglePlanExpanded(plan.id)">{{ expandedPlanIds.includes(plan.id) ? '收闔' : '展開' }}</NButton></span><NTag size="small" :type="plan.status === '啟用' ? 'success' : 'error'" round>{{ plan.status }}</NTag><div class="table-actions"><span class="muted">唯讀查看</span></div><div v-if="expandedPlanIds.includes(plan.id)" class="plan-assigned-detail"><div class="plan-assigned-head"><span>套用代理帳號</span><span>狀態</span><span>註冊時間</span><span>最後登入時間</span></div><div v-for="agent in planAppliedAgents(plan)" :key="agent.id" class="plan-assigned-row"><strong>{{ agent.account }}</strong><NTag size="small" round :type="agent.status === '啟用' ? 'success' : 'error'">{{ agent.status }}</NTag><time>{{ agent.registerAt || '-' }}</time><time>{{ agent.lastLoginAt || '-' }}</time></div><p v-if="!planAppliedAgents(plan).length" class="modal-help">目前沒有代理套用此方案。</p></div></div></div></div>
+          </div>
           <div v-if="activeKey === 'agents' && showAgentDetail && detailTab === 'relationship' && selectedAgent" class="relationship-clean-panel relationship-clean-overlay">
             <div class="relationship-clean-header">
               <div class="relationship-clean-header-main"><div class="relationship-agent-total"><span>代理總人數</span><strong>{{ relationshipRows('agents', 'all').length }} 人</strong></div><div class="relationship-player-total"><span>玩家總人數</span><strong>{{ relationshipRows('players', 'all').length }} 人</strong></div><div><span>完整樹狀路徑</span><strong>{{ displayAgentPath(selectedAgent.path) }}</strong><p v-if="selectedAgent.pendingTransferTargetPath" class="pending-transfer">預約新代理線：{{ displayAgentPath(selectedAgent.pendingTransferTargetPath) }}（{{ selectedAgent.pendingTransferEffectiveAt }} 生效）</p></div></div>
